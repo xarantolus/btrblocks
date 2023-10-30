@@ -34,7 +34,7 @@ static const std::vector<std::string> double_datasets{
     "8_F8.double",
     "9_F9.double",
     "11_Venta_hoy.double",
-    "5_Dev_proxima.double"
+    // "5_Dev_proxima.double"
 };
 
 static void SetupSchemes(const benchmark::State& state) {
