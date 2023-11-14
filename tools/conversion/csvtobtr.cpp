@@ -15,7 +15,7 @@
 #include <yaml-cpp/yaml.h>
 #include <spdlog/spdlog.h>
 #include <tbb/parallel_for.h>
-#include <tbb/task_scheduler_init.h>
+// #include <tbb/task_scheduler_init.h>
 // ------------------------------------------------------------------------------
 // Btr internal includes
 #include "common/Utils.hpp"
@@ -73,7 +73,7 @@ int main(int argc, char **argv)
     SchemePool::refresh();
 
     // Init TBB TODO: is that actually still necessary ?
-    tbb::task_scheduler_init init(FLAGS_threads);
+    // tbb::task_scheduler_init init(FLAGS_threads);
 
     // Load schema
     const auto schema = YAML::LoadFile(FLAGS_yaml);
