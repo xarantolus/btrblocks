@@ -11,7 +11,7 @@ void btrblocks::writeBinary(const char* pathname, std::vector<std::string>& v) {
   for (const auto& s : v) {
     fileSize += s.size() + 1;
   }
-  die_if(posix_fallocate(fd, 0, fileSize) == 0);
+  // die_if(posix_fallocate(fd, 0, fileSize) == 0);
   auto data =
       reinterpret_cast<Data*>(mmap(nullptr, fileSize, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0));
   data->count = v.size();

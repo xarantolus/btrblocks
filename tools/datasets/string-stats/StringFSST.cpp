@@ -47,10 +47,10 @@ int main(int argc, char **argv)
    // extract unique values
    u32 before_size = 0;
    u32 start_index = rand() % input_strings.size();
-   u32 tuple_count = std::min(static_cast<u64>(input_strings.size() - start_index), 65000ul);
+   u32 tuple_count = std::min(static_cast<unsigned long>(input_strings.size() - start_index), 65000ul);
    if ( start_index == input_strings.size()) {
       start_index = 0;
-      tuple_count = std::min(input_strings.size(), 65000ul);
+      tuple_count = std::min(static_cast<unsigned long>(input_strings.size()), 65000ul);
    }
    for ( u32 tuple_i = start_index; tuple_i < start_index + tuple_count; tuple_i++ ) {
       if ( bitmap[tuple_i] == 0 ) {
@@ -85,14 +85,13 @@ int main(int argc, char **argv)
    }
    // -------------------------------------------------------------------------------------
    unsigned char serialized_encoder_buf[FSST_MAXHEADER];
-   fsst_encoder_t *encoder = fsst_create(n, srcLen, srcBuf, 0);
+   fsst_encoder_t *encoder = fsst_create(n, reinterpret_cast<size_t*>(srcLen), srcBuf, 0);
    unsigned long hdr = fsst_export(encoder, serialized_encoder_buf);
 
    unsigned long output_buffer_size = 7 + 4 * before_size;//1024 * 1024 * 1024
    auto output_buffer = (u8 *) calloc(output_buffer_size, sizeof(u8));
 
-   auto n_compressed_strings = fsst_compress(encoder, n, srcLen, srcBuf, output_buffer_size, output_buffer,
-                                            dstLen, dstBuf);
+   auto n_compressed_strings = fsst_compress(encoder, n, reinterpret_cast<size_t*>(srcLen), srcBuf, output_buffer_size, output_buffer, reinterpret_cast<size_t*>(dstLen), dstBuf);
    assert(n_compressed_strings == n);
    u32 after_size = hdr;
    for ( u32 tuple_i = 0; tuple_i < n; tuple_i++ ) {
