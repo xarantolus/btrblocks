@@ -9,7 +9,7 @@ find_package(Git REQUIRED)
 ExternalProject_Add(
     tbb_src
     PREFIX "vendor/intel/tbb"
-    GIT_REPOSITORY "git@github.com:seb711/oneTBB.git"
+    GIT_REPOSITORY "https://github.com/seb711/oneTBB.git"
     GIT_TAG master
     TIMEOUT 10
     BUILD_COMMAND  make
