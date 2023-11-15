@@ -9,6 +9,7 @@ project(BtrBlocks VERSION 0.0.1)
 # -------------------------------------------------------------------------------
 
 option(NO_SIMD "NO_SIMD" OFF)
+option(ARM_BUILD "ARM" OFF)
 option(WITH_LOGGING "WITH_LOGGING" OFF)
 option(SAMPLING_TEST_MODE "SAMPLING_TEST_MODE" OFF)
 option(ENABLE_FOR_SCHEME "ENABLE_FOR_SCHEME" OFF)

@@ -23,7 +23,12 @@ ExternalProject_Add(
 # Prepare croaring
 ExternalProject_Get_Property(croaring_src install_dir)
 set(CROARING_INCLUDE_DIR ${install_dir}/include)
+if (${ARM_BUILD})
 set(CROARING_LIBRARY_PATH ${install_dir}/lib/libroaring.a)
+else()
+    set(CROARING_LIBRARY_PATH ${install_dir}/lib/libroaring.so)
+
+endif()
 file(MAKE_DIRECTORY ${CROARING_INCLUDE_DIR})
 add_library(croaring SHARED IMPORTED)
 set_property(TARGET croaring PROPERTY IMPORTED_LOCATION ${CROARING_LIBRARY_PATH})
