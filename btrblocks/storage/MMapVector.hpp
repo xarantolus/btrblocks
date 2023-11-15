@@ -76,7 +76,7 @@ void writeBinary(const char* pathname, std::vector<T>& v) {
   int fd = open(pathname, O_RDWR | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
   die_if(fd != -1);
   uint64_t length = v.size() * sizeof(T);
-  die_if(posix_fallocate(fd, 0, length) == 0);
+  // die_if(posix_fallocate(fd, 0, length) == 0);
   T* data = reinterpret_cast<T*>(mmap(nullptr, length, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0));
   die_if(data != MAP_FAILED);
   memcpy(data, v.data(), length);
