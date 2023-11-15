@@ -20,7 +20,6 @@ ExternalProject_Add(
     -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
     -DCMAKE_LIBRARY_OUTPUT_DIRECTORY:STRING=./lib
     -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS} -DTBB_TEST:BOOL=OFF
-    -DCMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}
 )
 
 # Prepare json
@@ -28,7 +27,11 @@ ExternalProject_Get_Property(tbb_src source_dir)
 ExternalProject_Get_Property(tbb_src binary_dir)
 
 set(TBB_INCLUDE_DIR ${source_dir}/include)
+if (${ARM_BUILD})
+set(TBB_LIBRARY_PATH ${binary_dir}/libtbb.dylib)
+else()
 set(TBB_LIBRARY_PATH ${binary_dir}/libtbb.so)
+endif()
 
 file(MAKE_DIRECTORY ${TBB_INCLUDE_DIR})
 
