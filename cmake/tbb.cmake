@@ -27,11 +27,8 @@ ExternalProject_Get_Property(tbb_src source_dir)
 ExternalProject_Get_Property(tbb_src binary_dir)
 
 set(TBB_INCLUDE_DIR ${source_dir}/include)
-if (${ARM_BUILD})
-set(TBB_LIBRARY_PATH ${binary_dir}/libtbb.dylib)
-else()
 set(TBB_LIBRARY_PATH ${binary_dir}/libtbb.so)
-endif()
+
 
 file(MAKE_DIRECTORY ${TBB_INCLUDE_DIR})
 

@@ -16,7 +16,7 @@ if [ -d "$directory" ]; then
     # Iterate through each folder in the directory
     for folder in "$directory"/*/; do
         # Call your script with the folder directory as an argument and append output to the file
-        ./decompression-speed "$folder" >> "$output_file"
+        ./decompression-speed -btr "$folder" >> "$output_file"
     done
 else
     echo "Directory not found!"
