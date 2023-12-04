@@ -8,6 +8,8 @@
 #include "roaring/roaring.hh"
 // -------------------------------------------------------------------------------------
 namespace btrblocks {
+
+using roaring::Roaring;
 // ------------------------------------------------------------------------------
 template <typename NumberType>
 struct FrequencyStructure {
