@@ -41,6 +41,10 @@ set(THREADS_PREFER_PTHREAD_FLAG ON)
 
 set(CMAKE_VENDOR_DIR "${CMAKE_SOURCE_DIR}/cmake/")
 
+if (CMAKE_SYSTEM_PROCESSOR MATCHES "arm")
+  include("${CMAKE_MODULE_PATH}/simde.cmake")
+endif ()
+
 # Compression library dependencies
 include("${CMAKE_VENDOR_DIR}/fastpfor.cmake")
 include("${CMAKE_VENDOR_DIR}/fsst.cmake")
@@ -61,7 +65,6 @@ include("${CMAKE_VENDOR_DIR}/googletest.cmake")
 include("${CMAKE_VENDOR_DIR}/aws-sdk.cmake")
 include("${CMAKE_VENDOR_DIR}/benchmark.cmake")
 include("${CMAKE_VENDOR_DIR}/gdouble.cmake")
-include("${CMAKE_VENDOR_DIR}/turbo.cmake")
 include("${CMAKE_VENDOR_DIR}/lz4.cmake")
 
 # ---------------------------------------------------------------------------

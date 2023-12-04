@@ -10,7 +10,6 @@
 #include <headers/blockpacking.h>
 #include <headers/codecfactory.h>
 #include <headers/deltautil.h>
-#include <headers/fastpfor.h>
 #pragma GCC diagnostic pop
 // -------------------------------------------------------------------------------------
 using namespace btrblocks;

@@ -13,8 +13,11 @@
 // -------------------------------- Using SIMD ----------------------------------
 #else  // USE_SIMD
 // ------------------------------------------------------------------------------
-
+#if (defined(__x86_64__) || defined(__i386__))
 #include <immintrin.h>
+#elif defined(__ARM_NEON__)
+#include <simde/x86/sse4.1.h>
+#endif
 
 #define BTR_IFSIMD(x...) x
 #define BTR_IFELSESIMD(a, b) a
