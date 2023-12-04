@@ -16,7 +16,7 @@
 #if (defined(__x86_64__) || defined(__i386__))
 #include <immintrin.h>
 #elif defined(__ARM_NEON__)
-#include <simde/x86/sse4.1.h>
+#include <simde/x86/avx512.h>
 #endif
 
 #define BTR_IFSIMD(x...) x

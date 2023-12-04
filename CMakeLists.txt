@@ -42,7 +42,8 @@ set(THREADS_PREFER_PTHREAD_FLAG ON)
 set(CMAKE_VENDOR_DIR "${CMAKE_SOURCE_DIR}/cmake/")
 
 if (CMAKE_SYSTEM_PROCESSOR MATCHES "arm")
-  include("${CMAKE_MODULE_PATH}/simde.cmake")
+  message(STATUS "SIMDE IS BEING USED")
+  include("${CMAKE_VENDOR_DIR}/simde.cmake")
 endif ()
 
 # Compression library dependencies
