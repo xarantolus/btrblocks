@@ -188,7 +188,7 @@ int main(int argc, char **argv) {
     std::vector<size_t> decompressed_sizes(file_metadata->num_columns, 0);
     std::vector<size_t> compressed_sizes(file_metadata->num_columns, 0);
     size_t total_size = 0;
-    size_t total_compressed_size = 0;
+    size_t total_compressed_size = 0; 
     for (u32 column_i : columns) {
         for (u32 part_i = 0; part_i < file_metadata->parts[column_i].num_parts; part_i++) {
             BtrReader &reader = readers[column_i][part_i];
@@ -229,7 +229,7 @@ int main(int argc, char **argv) {
         double s = average_runtime / (1000.0 * 1000.0);
         double mbs = mb / s;
 
-        std::cout << std::to_string(total_runtime) << " " << total_compressed_size << '\n';
+        std::cout << std::to_string(average_runtime) << " " << total_compressed_size << " " << total_size  << '\n';
 
         /* std::cout << "Total:"
                   << " " << total_compressed_size << " Bytes"
