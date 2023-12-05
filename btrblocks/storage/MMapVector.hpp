@@ -78,7 +78,7 @@ void writeBinary(const char* pathname, std::vector<T>& v) {
   die_if(fd != -1);
   uint64_t length = v.size() * sizeof(T);
 
-#if defined(HAVE_POSIX_FALLOCATE)
+#if defined(__linux__)
   die_if(posix_fallocate(fd, 0, length) == 0);
 #elif defined(__APPLE__)
   fstore_t store = {F_ALLOCATECONTIG, F_PEOFPOSMODE, 0, static_cast<off_t>(length)};

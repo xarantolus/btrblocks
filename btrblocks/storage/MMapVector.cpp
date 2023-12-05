@@ -11,7 +11,7 @@ void btrblocks::writeBinary(const char* pathname, std::vector<std::string>& v) {
   for (const auto& s : v) {
     fileSize += s.size() + 1;
   }
-#if defined(HAVE_POSIX_FALLOCATE)
+#if defined(__linux__)
   die_if(posix_fallocate(fd, 0, fileSize) == 0);
 #elif defined(__APPLE__)
   fstore_t store = {F_ALLOCATECONTIG, F_PEOFPOSMODE, 0, static_cast<off_t>(fileSize)};
