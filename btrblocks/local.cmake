@@ -73,7 +73,7 @@ if (${WITH_LOGGING})
 endif()
 
 # we have to import simde for simd functionality on arm
-if ((CMAKE_SYSTEM_PROCESSOR MATCHES "arm" OR CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64") AND NOT ${NO_SIMD})
+if (${IS_AARCH64} AND NOT ${NO_SIMD})
     target_link_libraries(btrblocks simde)
 endif ()
 
