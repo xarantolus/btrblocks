@@ -7,8 +7,6 @@
 // -------------------------------------------------------------------------------------
 namespace btrblocks::bitmap {
 
-using roaring::Roaring;
-
 class BitmapWrapper {
  private:
   u32 m_tuple_count;

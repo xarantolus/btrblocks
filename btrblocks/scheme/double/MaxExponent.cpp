@@ -15,8 +15,6 @@ constexpr uint32_t max_exponent_scheme_siginifcant_digit_bits_limit = 64;
 // -------------------------------------------------------------------------------------
 using namespace std;
 
-using roaring::Roaring;
-
 void printDouble(double input) {
   union {
     double d;
