@@ -5,7 +5,7 @@ sudo apt update && sudo apt install cmake && sudo apt install build-essential &&
 
 cmake .. -DCMAKE_BUILD_TYPE=Release
 
-make decompression-speed
+make -j4 decompression-speed
 
 aws s3 sync s3://public-bi-eu-central-1/v0.0.1/btr/ ./data --no-sign
 
