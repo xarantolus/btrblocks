@@ -1,5 +1,8 @@
 #!/bin/bash
 
+
+sudo apt update && sudo apt install cmake && sudo apt install build-essential && sudo apt install awscli
+
 make decompression-speed
 
 aws s3 sync s3://public-bi-eu-central-1/v0.0.1/btr/ ./data --no-sign
