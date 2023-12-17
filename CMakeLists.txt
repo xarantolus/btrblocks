@@ -26,7 +26,7 @@ set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -g")
 set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -g")
 add_compile_options(-march=native -Wall -Wextra)
 
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/cmake)
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 include("cmake/environment.cmake") # Set environment-specific compiler flags
@@ -39,7 +39,7 @@ include("cmake/clang-tidy.cmake") # Integrate clang-tidy
 find_package(Threads REQUIRED)
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 
-set(CMAKE_VENDOR_DIR "${CMAKE_SOURCE_DIR}/cmake/")
+set(CMAKE_VENDOR_DIR "${CMAKE_CURRENT_SOURCE_DIR}/cmake/")
 
 # Compression library dependencies
 include("${CMAKE_VENDOR_DIR}/fastpfor.cmake")
@@ -68,10 +68,10 @@ include("${CMAKE_VENDOR_DIR}/lz4.cmake")
 # Components
 # ---------------------------------------------------------------------------
 
-include("${CMAKE_SOURCE_DIR}/btrblocks/local.cmake")  # btrblocks library
-include("${CMAKE_SOURCE_DIR}/btrfiles/local.cmake")   # btrblocks files library
-include("${CMAKE_SOURCE_DIR}/test/local.cmake")       # btrblocks tests
-include("${CMAKE_SOURCE_DIR}/tools/local.cmake")      # btrblocks tooling
+include("${CMAKE_CURRENT_SOURCE_DIR}/btrblocks/local.cmake")  # btrblocks library
+include("${CMAKE_CURRENT_SOURCE_DIR}/btrfiles/local.cmake")   # btrblocks files library
+include("${CMAKE_CURRENT_SOURCE_DIR}/test/local.cmake")       # btrblocks tests
+include("${CMAKE_CURRENT_SOURCE_DIR}/tools/local.cmake")      # btrblocks tooling
 
 # ---------------------------------------------------------------------------
 # Linting
