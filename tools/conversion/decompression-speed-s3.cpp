@@ -141,6 +141,8 @@ int main(int argc, char **argv) {
 
         s3_init(FLAGS_reps * total_parts, FLAGS_prealloc, threads, FLAGS_bucket, decompressPart);
 
+        std::cout << "compress start" << std::endl;
+
         auto t1 = std::chrono::high_resolution_clock::now();
         // Start all requests asynchronously
         for (uint64_t rep = 0; rep < FLAGS_reps; rep++) {

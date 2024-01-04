@@ -10,7 +10,7 @@ ExternalProject_Add(
         libawscpp-download
         PREFIX "vendor/libawscpp-download"
         GIT_REPOSITORY "https://github.com/aws/aws-sdk-cpp.git"
-        GIT_TAG "1.9.370"
+        GIT_TAG "1.11.194"
         TIMEOUT 10
         LIST_SEPARATOR "|"
         CMAKE_ARGS
@@ -18,7 +18,7 @@ ExternalProject_Add(
         -DCMAKE_INSTALL_LIBDIR=lib
         -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
         -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
-        -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS} -Wno-error=deprecated-declarations
+        -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
         -DCMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}
         -DENABLE_TESTING=OFF # Test are broken with gcc-11, gcc-10 leads to errors about missing atomic operations. Gave up and disabled tests.
         -DBUILD_ONLY=s3|s3-crt|transfer

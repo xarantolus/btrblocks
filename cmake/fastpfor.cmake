@@ -5,11 +5,12 @@
 include(ExternalProject)
 find_package(Git REQUIRED)
 
+if (${ARM_BUILD})
 ExternalProject_Add(
     fastpfor_src
     PREFIX "vendor/lemire/fastpfor"
-    GIT_REPOSITORY "https://github.com/lemire/FastPFor.git"
-    GIT_TAG 773283d4a11fa2440a1b3b28fd77f775e86d7898
+    GIT_REPOSITORY "https://github.com/seb711/FastPFor.git"
+    GIT_TAG master
     TIMEOUT 10
     UPDATE_COMMAND "" # to prevent rebuilding everytime
     INSTALL_COMMAND ""
@@ -20,6 +21,24 @@ ExternalProject_Add(
     -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
     -DCMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}
 )
+else()
+    ExternalProject_Add(
+            fastpfor_src
+            PREFIX "vendor/lemire/fastpfor"
+            GIT_REPOSITORY "https://github.com/lemire/FastPFor.git"
+            GIT_TAG 773283d4a11fa2440a1b3b28fd77f775e86d7898
+            TIMEOUT 10
+            UPDATE_COMMAND "" # to prevent rebuilding everytime
+            INSTALL_COMMAND ""
+            CMAKE_ARGS
+            -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/vendor/fastpfor_cpp
+            -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+            -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
+            -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
+            -DCMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}
+    )
+endif()
+
 
 ExternalProject_Get_Property(fastpfor_src source_dir)
 ExternalProject_Get_Property(fastpfor_src binary_dir)
