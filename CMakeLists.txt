@@ -21,7 +21,7 @@ option(BUILD_SHARED_LIBRARY "BUILD_SHARED_LIBRARY" OFF)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -g -Wno-error=deprecated-declarations")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -g")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -pthread -g")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -g -O3")
 set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -g")
@@ -41,6 +41,11 @@ find_package(Threads REQUIRED)
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 
 set(CMAKE_VENDOR_DIR "${CMAKE_SOURCE_DIR}/cmake/")
+
+if (${IS_AARCH64})
+  message(STATUS "SIMDE IS BEING USED")
+  include("${CMAKE_VENDOR_DIR}/simde.cmake")
+endif ()
 
 # Compression library dependencies
 include("${CMAKE_VENDOR_DIR}/fastpfor.cmake")
@@ -62,7 +67,6 @@ include("${CMAKE_VENDOR_DIR}/googletest.cmake")
 include("${CMAKE_VENDOR_DIR}/aws-sdk.cmake")
 include("${CMAKE_VENDOR_DIR}/benchmark.cmake")
 include("${CMAKE_VENDOR_DIR}/gdouble.cmake")
-# include("${CMAKE_VENDOR_DIR}/turbo.cmake")
 include("${CMAKE_VENDOR_DIR}/lz4.cmake")
 
 # ---------------------------------------------------------------------------

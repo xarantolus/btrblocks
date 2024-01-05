@@ -6,6 +6,7 @@
 #include <roaring/roaring.hh>
 // -------------------------------------------------------------------------------------
 namespace btrblocks::bitmap {
+
 class BitmapWrapper {
  private:
   u32 m_tuple_count;
