@@ -42,7 +42,7 @@ set(THREADS_PREFER_PTHREAD_FLAG ON)
 
 set(CMAKE_VENDOR_DIR "${CMAKE_SOURCE_DIR}/cmake/")
 
-if (${IS_AARCH64})
+if ((NOT "${IS_AARCH64}" STREQUAL "") AND NOT ${NO_SIMD})
   message(STATUS "SIMDE IS BEING USED")
   include("${CMAKE_VENDOR_DIR}/simde.cmake")
 endif ()
