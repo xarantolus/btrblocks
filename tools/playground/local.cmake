@@ -58,7 +58,7 @@ configure_file(${BTR_PLAYGROUND_DIR}/s3-columns.txt s3-columns.txt COPYONLY)
 
 # Configuration Mechanism
 add_executable(threadlocal_config ${BTR_PLAYGROUND_DIR}/config.cpp)
-target_link_libraries(threadlocal_config btrblocks tbb)
+target_link_libraries(threadlocal_config btrblocks TBB::tbb)
 
 # ---------------------------------------------------------------------------
 # Playing around with the AWS S3 SDK & API
@@ -77,4 +77,4 @@ add_executable(test-s3-transfer ${BTR_PLAYGROUND_DIR}/test-s3-transfer.cpp)
 target_link_libraries(test-s3-transfer libaws-cpp-sdk-core libaws-cpp-sdk-s3 libaws-cpp-sdk-transfer)
 
 add_executable(generate_s3_data ${BTR_PLAYGROUND_DIR}/generate_s3_data.cpp)
-target_link_libraries(generate_s3_data libaws-cpp-sdk-core libaws-cpp-sdk-s3-crt tbb)
+target_link_libraries(generate_s3_data libaws-cpp-sdk-core libaws-cpp-sdk-s3-crt TBB::tbb)
