@@ -15,7 +15,7 @@
 #include <yaml-cpp/yaml.h>
 #include <spdlog/spdlog.h>
 #include <tbb/parallel_for.h>
-#include <tbb/task_scheduler_init.h>
+//#include <tbb/task_scheduler_init.h>
 // ------------------------------------------------------------------------------
 // Btr internal includes
 #include "common/Utils.hpp"

@@ -9,8 +9,8 @@ find_package(Git REQUIRED)
 ExternalProject_Add(
     tbb_src
     PREFIX "vendor/intel/tbb"
-    GIT_REPOSITORY "https://github.com/wjakob/tbb.git"
-    GIT_TAG b066defc0229a1e92d7a200eb3fe0f7e35945d95
+    GIT_REPOSITORY "https://github.com/oneapi-src/oneTBB"
+    GIT_TAG master
     TIMEOUT 10
     BUILD_COMMAND  make
     UPDATE_COMMAND "" # to prevent rebuilding everytime

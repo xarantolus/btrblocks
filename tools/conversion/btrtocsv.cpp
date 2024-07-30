@@ -9,12 +9,12 @@
 #include <fstream>
 // ------------------------------------------------------------------------------
 // External libs
+// ------------------------------------------------------------------------------
+#include "tbb/task_arena.h"
 #include "gflags/gflags.h"
-#include "yaml-cpp/yaml.h"
 #include "spdlog/spdlog.h"
 #include "tbb/parallel_for.h"
-#include "tbb/task_scheduler_init.h"
-// ------------------------------------------------------------------------------
+#include "yaml-cpp/yaml.h"
 // Btrfiles library
 #include "btrfiles.hpp"
 // ------------------------------------------------------------------------------
@@ -105,8 +105,7 @@ int main(int argc, char **argv)
     // This seems necessary to be
     SchemePool::refresh();
 
-    // Init TBB TODO: is that actually still necessary ?
-    tbb::task_scheduler_init init(FLAGS_threads); // NOLINT(cppcoreguidelines-narrowing-conversions)
+    oneapi::tbb::task_arena arena(FLAGS_threads);
 
     // Open output file
     auto csvstream = std::ofstream(FLAGS_csv);
@@ -124,15 +123,18 @@ int main(int argc, char **argv)
     // Prepare the readers
     std::vector<std::vector<BtrReader>> readers(file_metadata->num_columns);
     std::vector<std::vector<std::vector<char>>> compressed_data(file_metadata->num_columns);
-    tbb::parallel_for(u32(0), file_metadata->num_columns, [&](u32 column_i) {
+
+    arena.execute([&] {
+      tbb::parallel_for(u32(0), file_metadata->num_columns, [&](u32 column_i) {
         compressed_data[column_i].resize(file_metadata->parts[column_i].num_parts);
         for (u32 part_i = 0; part_i < file_metadata->parts[column_i].num_parts; part_i++) {
-            auto path = btr_dir / ("column" + std::to_string(column_i) + "_part" + std::to_string(part_i));
-            Utils::readFileToMemory(path.string(), compressed_data[column_i][part_i]);
-            readers[column_i].emplace_back(compressed_data[column_i][part_i].data());
+          auto path =
+              btr_dir / ("column" + std::to_string(column_i) + "_part" + std::to_string(part_i));
+          Utils::readFileToMemory(path.string(), compressed_data[column_i][part_i]);
+          readers[column_i].emplace_back(compressed_data[column_i][part_i].data());
         }
+      });
     });
-
     // For each column counters contains a pair of <current_part_i, current_chunk_within_part_i>
     std::vector<std::pair<u32, u32>> counters(file_metadata->num_columns, {0, 0});
 
