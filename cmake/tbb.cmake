@@ -12,7 +12,6 @@ ExternalProject_Add(
     GIT_REPOSITORY "https://github.com/oneapi-src/oneTBB"
     GIT_TAG master
     TIMEOUT 10
-    BUILD_COMMAND  make
     UPDATE_COMMAND "" # to prevent rebuilding everytime
     INSTALL_COMMAND ""
     CMAKE_ARGS
@@ -21,6 +20,8 @@ ExternalProject_Add(
     -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
     -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
     -DCMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}
+    -DCMAKE_EXE_LINKER_FLAGS=${CMAKE_EXE_LINKER_FLAGS} -Wl,--undefined-version
+    -DCMAKE_SHARED_LINKER_FLAGS=${CMAKE_SHARED_LINKER_FLAGS} -Wl,--undefined-version
 )
 
 # Prepare json
