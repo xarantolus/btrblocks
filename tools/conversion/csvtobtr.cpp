@@ -73,7 +73,7 @@ int main(int argc, char **argv)
     SchemePool::refresh();
 
     // Init TBB TODO: is that actually still necessary ?
-    tbb::task_scheduler_init init(FLAGS_threads);
+    // tbb::task_scheduler_init init(FLAGS_threads);
 
     // Load schema
     const auto schema = YAML::LoadFile(FLAGS_yaml);
