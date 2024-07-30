@@ -1,4 +1,9 @@
 // -------------------------------------------------------------------------------------
+#include <headers/blockpacking.h>
+#include <headers/compositecodec.h>
+#include <headers/deltautil.h>
+#include <headers/simdfastpfor.h>
+#include <headers/variablebyte.h>
 #include "headers/codecfactory.h"
 #include "headers/deltautil.h"
 // -------------------------------------------------------------------------------------
@@ -14,7 +19,9 @@ int main() {
    std::srand(std::time(nullptr));
    // -------------------------------------------------------------------------------------
    using namespace FastPForLib;
-   IntegerCODEC &codec = *CODECFactory::getFromName("simdfastpfor256");
+   CODECFactory factory;
+
+   IntegerCODEC& codec = *factory.getFromName("simdfastpfor256");
    size_t N = 1000 * 1000;
    std::vector<uint32_t> rle_input(N);
    for ( uint32_t i = 0; i < N; i++ ) {

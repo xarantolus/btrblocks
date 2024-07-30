@@ -11,8 +11,12 @@
 #include <fsst.h>
 #include <gflags/gflags.h>
 // -------------------------------------------------------------------------------------
+#include <headers/blockpacking.h>
+#include <headers/compositecodec.h>
+#include <headers/deltautil.h>
+#include <headers/simdfastpfor.h>
+#include <headers/variablebyte.h>
 #include "headers/codecfactory.h"
-#include "headers/deltautil.h"
 // -------------------------------------------------------------------------------------
 DEFINE_uint32(n, 10, "");
 DEFINE_uint32(s, 100, "");
