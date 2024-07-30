@@ -13,7 +13,6 @@
 #include "yaml-cpp/yaml.h"
 #include "spdlog/spdlog.h"
 #include "tbb/parallel_for.h"
-#include "tbb/task_scheduler_init.h"
 // ------------------------------------------------------------------------------
 // Btrfiles library
 #include "btrfiles.hpp"
@@ -104,9 +103,6 @@ int main(int argc, char **argv)
 
     // This seems necessary to be
     SchemePool::refresh();
-
-    // Init TBB TODO: is that actually still necessary ?
-    tbb::task_scheduler_init init(FLAGS_threads); // NOLINT(cppcoreguidelines-narrowing-conversions)
 
     // Open output file
     auto csvstream = std::ofstream(FLAGS_csv);

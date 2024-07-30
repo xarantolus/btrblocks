@@ -6,7 +6,6 @@
 // -------------------------------------------------------------------------------------
 #include "gflags/gflags.h"
 #include "tbb/parallel_for.h"
-#include "tbb/task_scheduler_init.h"
 // -------------------------------------------------------------------------------------
 #include "common/PerfEvent.hpp"
 #include "common/Utils.hpp"
@@ -108,7 +107,6 @@ int main(int argc, char **argv) {
     } else {
         threads = FLAGS_threads;
     }
-    tbb::task_scheduler_init init(threads);
 
     // Read the metadata
     std::vector<char> raw_file_metadata;

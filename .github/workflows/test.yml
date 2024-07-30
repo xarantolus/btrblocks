@@ -18,6 +18,11 @@ jobs:
       - name: install cmake and ninja
         uses: lukka/get-cmake@v3.24.2
 
+      - name: install oneTBB
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libtbb-dev
+
       - name: checkout project
         uses: actions/checkout@v3
 
