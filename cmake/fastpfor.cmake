@@ -8,8 +8,8 @@ find_package(Git REQUIRED)
 ExternalProject_Add(
     fastpfor_src
     PREFIX "vendor/lemire/fastpfor"
-        GIT_REPOSITORY "https://github.com/lemire/FastPFor.git"
-        GIT_TAG master
+    GIT_REPOSITORY "https://github.com/lemire/FastPFor.git"
+    GIT_TAG bc375056b803af9b3ca5a6c98e6b38aeca80d825
     TIMEOUT 10
     UPDATE_COMMAND "" # to prevent rebuilding everytime
     INSTALL_COMMAND ""
