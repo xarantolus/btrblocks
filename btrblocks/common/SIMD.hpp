@@ -9,6 +9,10 @@
 #define BTR_IFELSESIMD(a, b) b
 #define SIMD_EXTRA_BYTES 0
 #define SIMD_EXTRA_ELEMENTS(TYPE) 0
+
+#ifdef SVE_ENABLED
+#warning "SVE_ENABLED is set, but has no effect when not using SIMD (BTR_FLAG_NO_SIMD)"
+#endif
 #define SVE_ENABLED false
 // -------------------------------- Using SIMD ----------------------------------
 #else  // USE_SIMD
@@ -16,14 +20,20 @@
 
 #if (defined(__x86_64__) || defined(__i386__))
 #include <immintrin.h>
+#ifdef SVE_ENABLED
+#warning "SVE_ENABLED is set, but it has no effect on x86 (SVE is not available here)"
+#endif
 #define SVE_ENABLED false
 #elif defined(__aarch64__)
 #include <simde/x86/avx512.h>
-// There are some places where we might want to use SVE instead - check if normal if(SVE_ENABLED)
+// There are some places where we might want to use SVE instead - check with normal if(SVE_ENABLED)
 // Note that this should be done as runtime check
 #include <arm_sve.h>
 #include <sys/auxv.h>
+// This allows setting SVE_ENABLED=false for ARM, which allows us to compare NEON vs. SVE
+#ifndef SVE_ENABLED
 #define SVE_ENABLED (getauxval(AT_HWCAP) & HWCAP_SVE)
+#endif
 #endif
 
 #define BTR_IFSIMD(x...) x
