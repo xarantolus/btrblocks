@@ -16,6 +16,12 @@ if (${NO_SIMD})
     add_compile_definitions(BTR_FLAG_NO_SIMD=1)
 endif()
 
+if (${NO_SVE})
+    message("Disabling SVE for btrblocks")
+    add_compile_definitions(SVE_ENABLED=0)
+endif()
+
+
 if (${WITH_LOGGING})
     message("Enabling logging for btrblocks")
     add_compile_definitions(BTR_FLAG_LOGGING=1)
