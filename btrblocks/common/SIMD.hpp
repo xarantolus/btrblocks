@@ -47,3 +47,19 @@
 #define SIMD_EXTRA_ELEMENTS(TYPE) (SIMD_EXTRA_BYTES / sizeof(TYPE))
 
 #endif  // BTR_FLAG_NO_SIMD
+
+#if defined(__aarch64__)
+#define BTR_IFELSEARM_SVE(a, b) \
+  do {                          \
+    if (SVE_ENABLED) {          \
+      a;                        \
+    } else {                    \
+      b;                        \
+    }                           \
+  } while (0)
+#else
+#define BTR_IFELSEARM_SVE(a, b) \
+  do {                          \
+    b;                          \
+  } while (0)
+#endif

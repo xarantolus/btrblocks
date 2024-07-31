@@ -27,22 +27,32 @@ u32 OneValue::compress(const INTEGER* src, const BITMAP*, u8* dest, SInteger32St
   return sizeof(UINTEGER);
 }
 // -------------------------------------------------------------------------------------
+inline void decompress_sve_loop(INTEGER* dest,
+                                const OneValueStructure& col_struct,
+                                u32 tuple_count) {
+#pragma clang loop vectorize(assume_safety) vectorize_width(scalable)
+  for (u32 row_i = 0; row_i < tuple_count; row_i++) {
+    dest[row_i] = col_struct.one_value;
+  }
+}
+
+inline void decompress_non_sve_loop(INTEGER* dest,
+                                    const OneValueStructure& col_struct,
+                                    u32 tuple_count) {
+  for (u32 row_i = 0; row_i < tuple_count; row_i++) {
+    dest[row_i] = col_struct.one_value;
+  }
+}
+
 void OneValue::decompress(INTEGER* dest,
                           BitmapWrapper*,
                           const u8* src,
                           u32 tuple_count,
                           u32 level) {
   const auto& col_struct = *reinterpret_cast<const OneValueStructure*>(src);
-  if (SVE_ENABLED) {
-    #pragma clang loop vectorize(assume_safety) vectorize_width(scalable)
-    for (u32 row_i = 0; row_i < tuple_count; row_i++) {
-      dest[row_i] = col_struct.one_value;
-    }
-  } else {
-    for (u32 row_i = 0; row_i < tuple_count; row_i++) {  // can be further optimized probably
-      dest[row_i] = col_struct.one_value;
-    }
-  }
+  BTR_IFELSEARM_SVE(
+      { decompress_sve_loop(dest, col_struct, tuple_count); },
+      { decompress_non_sve_loop(dest, col_struct, tuple_count); });
 }
 // -------------------------------------------------------------------------------------
 INTEGER OneValue::lookup(u32) {
