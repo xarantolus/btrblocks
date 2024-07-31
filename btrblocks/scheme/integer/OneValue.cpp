@@ -33,8 +33,15 @@ void OneValue::decompress(INTEGER* dest,
                           u32 tuple_count,
                           u32 level) {
   const auto& col_struct = *reinterpret_cast<const OneValueStructure*>(src);
-  for (u32 row_i = 0; row_i < tuple_count; row_i++) {  // can be further optimized probably
-    dest[row_i] = col_struct.one_value;
+  if (SVE_ENABLED) {
+    #pragma clang loop vectorize(assume_safety) vectorize_width(scalable)
+    for (u32 row_i = 0; row_i < tuple_count; row_i++) {
+      dest[row_i] = col_struct.one_value;
+    }
+  } else {
+    for (u32 row_i = 0; row_i < tuple_count; row_i++) {  // can be further optimized probably
+      dest[row_i] = col_struct.one_value;
+    }
   }
 }
 // -------------------------------------------------------------------------------------

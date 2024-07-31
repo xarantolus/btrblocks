@@ -1,4 +1,5 @@
 #include "OneValue.hpp"
+#include "common/SIMD.hpp"
 #include "common/Units.hpp"
 #include "scheme/CompressionScheme.hpp"
 #include "storage/Chunk.hpp"
@@ -164,15 +165,31 @@ bool OneValue::decompressNoCopy(u8* dest,
       .offset = static_cast<u32>(tuple_count * sizeof(StringPointerArrayViewer::View))};
 
 #ifdef BTR_USE_SIMD
-  auto dest_view_simd = reinterpret_cast<__m256i*>(dest_views);
   auto* data = reinterpret_cast<long long*>(&view);
-  __m256i data_v = _mm256_set1_epi64x(*data);
-  for (u32 idx = 0; idx < tuple_count; idx += 16) {
-    _mm256_storeu_si256(dest_view_simd, data_v);
-    _mm256_storeu_si256(dest_view_simd + 1, data_v);
-    _mm256_storeu_si256(dest_view_simd + 2, data_v);
-    _mm256_storeu_si256(dest_view_simd + 3, data_v);
-    dest_view_simd += 4;
+  if (SVE_ENABLED) {
+    static_assert(sizeof(long long*) == sizeof(s64), "Expected pointer to have size 64 bit");
+    auto dest_view_simd = reinterpret_cast<s64*>(dest_views);
+
+    u32 current_count = 0;
+    svbool_t remaining_mask = svwhilelt_b64(CU(0), tuple_count);
+
+    const auto data_v = svdup_s64(*data);
+    while (svptest_first(svptrue_b64(), remaining_mask)) {
+      svst1_s64(remaining_mask, dest_view_simd + current_count, data_v);
+
+      current_count += svcntp_b64(svptrue_b64(), remaining_mask);
+      remaining_mask = svwhilelt_b64(current_count, tuple_count);
+    }
+  } else {
+    auto dest_view_simd = reinterpret_cast<__m256i*>(dest_views);
+    __m256i data_v = _mm256_set1_epi64x(*data);
+    for (u32 idx = 0; idx < tuple_count; idx += 16) {
+      _mm256_storeu_si256(dest_view_simd, data_v);
+      _mm256_storeu_si256(dest_view_simd + 1, data_v);
+      _mm256_storeu_si256(dest_view_simd + 2, data_v);
+      _mm256_storeu_si256(dest_view_simd + 3, data_v);
+      dest_view_simd += 4;
+    }
   }
 #else
   std::fill_n(dest_views, tuple_count, view);
