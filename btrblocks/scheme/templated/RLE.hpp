@@ -251,7 +251,7 @@ inline void TRLE<DOUBLE, DoubleScheme, DoubleStats, DoubleSchemeType>::decompres
   }
   // -------------------------------------------------------------------------------------
   auto write_ptr = dest;
-#ifdef BTR_USE_SIMD
+#ifdef BTR_USE_SIMD  // TODO: SVE
   for (u32 run_i = 0; run_i < col_struct.runs_count; run_i++) {
     auto target_ptr = write_ptr + counts[run_i];
 

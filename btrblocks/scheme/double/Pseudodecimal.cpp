@@ -209,7 +209,7 @@ static inline void decompressExceptionBlock(DecimalIterateParam* param) {
   param->next_block_i++;
 }
 
-#ifdef BTR_USE_SIMD
+#ifdef BTR_USE_SIMD // TODO: SVE
 static inline void decompressAVXBlock4(DecimalIterateParam* param) {
   // Load numbers and convert to double
   __m128i numbers_int_0 = _mm_loadu_si128(reinterpret_cast<__m128i*>(param->numbers_ptr) + 0);

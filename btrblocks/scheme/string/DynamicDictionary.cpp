@@ -496,7 +496,7 @@ bool DynamicDictionary::decompressNoCopy(u8* dest,
                                         tuple_count, level + 1);
 
     static_assert(sizeof(StringPointerArrayViewer::View) == 8);
-#ifdef BTR_USE_SIMD
+#ifdef BTR_USE_SIMD // TODO: SVE
     for (u32 run = 0; run < runs_count; run++) {
       INTEGER code = values_ptr[run];
       auto* data = reinterpret_cast<long long*>(views_ptr + code);
@@ -528,7 +528,7 @@ bool DynamicDictionary::decompressNoCopy(u8* dest,
                             level + 1);
 
     u32 row_i = 0;
-#ifdef BTR_USE_SIMD
+#ifdef BTR_USE_SIMD  // TODO: SVE
     static_assert(sizeof(*views_ptr) == 8);
     static_assert(SIMD_EXTRA_BYTES >= 4 * sizeof(__m256i));
     if (tuple_count >= 16) {

@@ -124,7 +124,7 @@ inline void TDynamicDictionary<INTEGER, IntegerScheme, SInteger32Stats, IntegerS
 
   auto dict = reinterpret_cast<const INTEGER*>(col_struct.data);
   u32 i = 0;
-#ifdef BTR_USE_SIMD
+#ifdef BTR_USE_SIMD  // TODO: SVE
   if (tuple_count >= 32) {
     while (i < tuple_count - 31) {
       // Load codes.
@@ -178,7 +178,7 @@ inline void TDynamicDictionary<DOUBLE, DoubleScheme, DoubleStats, DoubleSchemeTy
 
   auto dict = reinterpret_cast<const DOUBLE*>(col_struct.data);
   u32 i = 0;
-#ifdef BTR_USE_SIMD
+#ifdef BTR_USE_SIMD  // TODO: SVE
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wuninitialized"
   if (tuple_count >= 16) {
