@@ -17,3 +17,5 @@ git-ignore
 *#
 *.dtmp
 *.bkp
+formatted
+public_bi_benchmark

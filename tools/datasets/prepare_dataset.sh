@@ -40,7 +40,7 @@ for file in *; do
          cd $tagret_dir
          if [[ $DOWNLOAD ]] && [[ ! -e ${tagret_dir}/${variant_name}.csv ]]; then
             # ${variant_name}.csv
-            (wget $csv_bzip; bzip2 -d *.bz2*; rm *.bz2* ; sed -n '$=' *.csv > tuple_count)
+            (wget $csv_bzip; bzip2 -df *.bz2*; rm -f *.bz2* ; sed -n '$=' *.csv > tuple_count)
          fi
 
          if [[ $PARSE ]]; then
