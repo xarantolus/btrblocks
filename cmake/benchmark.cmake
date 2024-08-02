@@ -23,7 +23,7 @@ ExternalProject_Add(
 
 ExternalProject_Get_Property(benchmark_src install_dir)
 set(BENCHMARK_INCLUDE_DIR ${install_dir}/include)
-set(BENCHMARK_LIBRARY_PATH ${install_dir}/lib/libbenchmark.a)
+find_library(BENCHMARK_LIBRARY_PATH NAMES libbenchmark.a PATHS ${install_dir}/lib)
 file(MAKE_DIRECTORY ${BENCHMARK_INCLUDE_DIR})
 add_library(gbenchmark STATIC IMPORTED)
 set_property(TARGET gbenchmark PROPERTY IMPORTED_LOCATION ${BENCHMARK_LIBRARY_PATH})
