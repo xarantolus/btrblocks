@@ -8,7 +8,7 @@ set -eu
 
 # Dependencies
 sudo yum -y groupinstall "Development Tools"
-sudo yum -y install openssl-devel libcurl-devel bzip2-devel postgresql-devel gcc10-c++ libasan10 tmux git htop tree perf boost-devel
+sudo yum -y install openssl-devel libcurl-devel bzip2-devel postgresql-devel gcc-c++ tmux git htop tree perf boost-devel
 
 pip3 install pandas pyarrow pyspark pyyaml
 
