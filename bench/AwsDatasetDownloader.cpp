@@ -71,7 +71,7 @@ int main(int argc, char** argv) {
   Aws::SDKOptions options;
   Aws::InitAPI(options);
   {
-    const Aws::String bucket_name = "public-bi-benchmark";
+    const Aws::String bucket_name = "public-bi-benchmark-btrblocks";
     const Aws::String region = "eu-central-1";
 
     Aws::Client::ClientConfiguration config;
@@ -89,15 +89,6 @@ int main(int argc, char** argv) {
 
     Aws::Transfer::TransferManagerConfiguration transfer_config(executor.get());
     transfer_config.s3Client = s3_client;
-
-    transfer_config.downloadProgressCallback =
-        [](const Aws::Transfer::TransferManager*,
-           const std::shared_ptr<const Aws::Transfer::TransferHandle>& handle) {
-          std::cout << "\r"
-                    << "Benchmark Download Progress for " << handle->GetKey() << ": "
-                    << handle->GetBytesTransferred() << " of " << handle->GetBytesTotalSize()
-                    << " bytes" << std::flush;
-        };
 
     auto transfer_manager = Aws::Transfer::TransferManager::Create(transfer_config);
 
