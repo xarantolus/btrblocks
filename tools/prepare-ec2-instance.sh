@@ -8,4 +8,4 @@ set -eu
 
 # Dependencies
 sudo yum -y groupinstall "Development Tools"
-sudo yum -y install openssl-devel libcurl-devel bzip2-devel postgresql-devel gcc-c++ tmux git htop tree perf boost-devel cmake tbb tbb-devel
+sudo yum -y install openssl-devel libcurl-devel bzip2-devel postgresql-devel gcc-c++ tmux git htop tree perf boost-devel cmake tbb tbb-devel zlib-devel
