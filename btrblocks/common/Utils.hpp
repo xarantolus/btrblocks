@@ -4,6 +4,7 @@
 #include <cstring>
 #include <fstream>
 // -------------------------------------------------------------------------------------
+#include "common/SIMD.hpp"
 #include "common/Units.hpp"
 // -------------------------------------------------------------------------------------
 namespace btrblocks {
@@ -97,6 +98,18 @@ class Utils {
     // - replacing the loadu_ and the first 8 elements by a write to a vector
     // register and a storu
 #ifdef BTR_USE_SIMD
+BTR_IFELSEARM_SVE({
+  u32 advancement = svcntw();
+  u32 current = 8;
+  svbool_t mask = svwhilelt_b32(current, n);
+  while(svptest_first(svptrue_b32(), mask)) {
+    svuint32_t to_write = svindex_u32(start, len);
+    svst1_u32(mask, dest + start, to_write);
+    current += advancement;
+    mask = svwhilelt_b32(current, n);
+  }
+  return dest + n;
+}, {
     auto write_ptr = dest + 8;
     auto* end = dest + n;
     const __m256i len_v = _mm256_set1_epi32(len * 8);
@@ -107,6 +120,7 @@ class Utils {
       write_ptr += 8;
     }
     return end;
+});
 #else
     for (auto i = 8u; i != n; ++i) {
       // could change multiplication to addition addition, but adds data
