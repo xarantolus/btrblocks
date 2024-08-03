@@ -1,4 +1,5 @@
 #pragma once
+#include "common/SIMD.hpp"
 #include "common/Utils.hpp"
 #include "compression/SchemePicker.hpp"
 #include "scheme/CompressionScheme.hpp"
@@ -124,38 +125,63 @@ inline void TDynamicDictionary<INTEGER, IntegerScheme, SInteger32Stats, IntegerS
 
   auto dict = reinterpret_cast<const INTEGER*>(col_struct.data);
   u32 i = 0;
-#ifdef BTR_USE_SIMD  // TODO: SVE
-  if (tuple_count >= 32) {
-    while (i < tuple_count - 31) {
-      // Load codes.
-      __m256i codes_0 = _mm256_loadu_si256(reinterpret_cast<__m256i*>(codes + 0));
-      __m256i codes_1 = _mm256_loadu_si256(reinterpret_cast<__m256i*>(codes + 8));
-      __m256i codes_2 = _mm256_loadu_si256(reinterpret_cast<__m256i*>(codes + 16));
-      __m256i codes_3 = _mm256_loadu_si256(reinterpret_cast<__m256i*>(codes + 24));
+#ifdef BTR_USE_SIMD
+  BTR_IFELSEARM_SVE(
+      {
+        static_assert(sizeof(*dest) == sizeof(u32));
+        // Decompress codes are the indicies into dict
+        u32 i = 0;
+        auto svemask = svwhilelt_b32(i, tuple_count);
+        const uint64_t VECTOR_WIDTH = svcntw();
 
-      // Gather values.
-      __m256i values_0 = _mm256_i32gather_epi32(dict, codes_0, 4);
-      __m256i values_1 = _mm256_i32gather_epi32(dict, codes_1, 4);
-      __m256i values_2 = _mm256_i32gather_epi32(dict, codes_2, 4);
-      __m256i values_3 = _mm256_i32gather_epi32(dict, codes_3, 4);
+        const u32* codes_ptr = reinterpret_cast<const uint32_t*>(codes);
+        const u32* dict_ptr = reinterpret_cast<const uint32_t*>(dict);
+        u32* dest_ptr = reinterpret_cast<u32*>(dest);
+        while (svptest_first(svptrue_b32(), svemask)) {
+          auto offsets = svld1_u32(svemask, &codes_ptr[i]);
+          auto values = svld1_gather_u32index_u32(svemask, dict_ptr, offsets);
+          svst1_u32(svemask, dest_ptr + i, values);
+          i+=VECTOR_WIDTH;
+          svemask = svwhilelt_b32(i, tuple_count);
+        }
+      },
+      {
+        if (tuple_count >= 32) {
+          while (i < tuple_count - 31) {
+            // Load codes.
+            __m256i codes_0 = _mm256_loadu_si256(reinterpret_cast<__m256i*>(codes + 0));
+            __m256i codes_1 = _mm256_loadu_si256(reinterpret_cast<__m256i*>(codes + 8));
+            __m256i codes_2 = _mm256_loadu_si256(reinterpret_cast<__m256i*>(codes + 16));
+            __m256i codes_3 = _mm256_loadu_si256(reinterpret_cast<__m256i*>(codes + 24));
 
-      // store values
-      _mm256_storeu_si256(reinterpret_cast<__m256i*>(dest + 0), values_0);
-      _mm256_storeu_si256(reinterpret_cast<__m256i*>(dest + 8), values_1);
-      _mm256_storeu_si256(reinterpret_cast<__m256i*>(dest + 16), values_2);
-      _mm256_storeu_si256(reinterpret_cast<__m256i*>(dest + 24), values_3);
+            // Gather values.
+            __m256i values_0 = _mm256_i32gather_epi32(dict, codes_0, 4);
+            __m256i values_1 = _mm256_i32gather_epi32(dict, codes_1, 4);
+            __m256i values_2 = _mm256_i32gather_epi32(dict, codes_2, 4);
+            __m256i values_3 = _mm256_i32gather_epi32(dict, codes_3, 4);
 
-      dest += 32;
-      codes += 32;
-      i += 32;
-    }
-  }
-#endif
+            // store values
+            _mm256_storeu_si256(reinterpret_cast<__m256i*>(dest + 0), values_0);
+            _mm256_storeu_si256(reinterpret_cast<__m256i*>(dest + 8), values_1);
+            _mm256_storeu_si256(reinterpret_cast<__m256i*>(dest + 16), values_2);
+            _mm256_storeu_si256(reinterpret_cast<__m256i*>(dest + 24), values_3);
 
+            dest += 32;
+            codes += 32;
+            i += 32;
+          }
+        }
+        while (i < tuple_count) {
+          *dest++ = dict[*codes++];
+          i++;
+        }
+      });
+#else
   while (i < tuple_count) {
     *dest++ = dict[*codes++];
     i++;
   }
+#endif
 }
 
 template <>
