@@ -529,47 +529,72 @@ bool DynamicDictionary::decompressNoCopy(u8* dest,
 
     u32 row_i = 0;
 #ifdef BTR_USE_SIMD  // TODO: SVE
-    static_assert(sizeof(*views_ptr) == 8);
-    static_assert(SIMD_EXTRA_BYTES >= 4 * sizeof(__m256i));
-    if (tuple_count >= 16) {
-      while (row_i < tuple_count - 15) {
-        // We cannot write out of bounds here like we do for other dict
-        // implementations because it would destroy the string data.
+    BTR_IFELSEARM_SVE(
+        {
+          static_assert(sizeof(*dest_views) == sizeof(DOUBLE));
 
-        // Load codes.
-        __m128i codes_0 = _mm_loadu_si128(reinterpret_cast<__m128i*>(decompressed_codes + 0));
-        __m128i codes_1 = _mm_loadu_si128(reinterpret_cast<__m128i*>(decompressed_codes + 4));
-        __m128i codes_2 = _mm_loadu_si128(reinterpret_cast<__m128i*>(decompressed_codes + 8));
-        __m128i codes_3 = _mm_loadu_si128(reinterpret_cast<__m128i*>(decompressed_codes + 12));
+          auto svemask = svwhilelt_b64(row_i, tuple_count);
+          const uint64_t VECTOR_WIDTH = svcntd();
 
-        // Gather values.
-        __m256i values_0 =
-            _mm256_i32gather_epi64(reinterpret_cast<long long*>(views_ptr), codes_0, 8);
-        __m256i values_1 =
-            _mm256_i32gather_epi64(reinterpret_cast<long long*>(views_ptr), codes_1, 8);
-        __m256i values_2 =
-            _mm256_i32gather_epi64(reinterpret_cast<long long*>(views_ptr), codes_2, 8);
-        __m256i values_3 =
-            _mm256_i32gather_epi64(reinterpret_cast<long long*>(views_ptr), codes_3, 8);
+          const auto codes_ptr = reinterpret_cast<const u32*>(decompressed_codes);
+          const auto dict_ptr = reinterpret_cast<const DOUBLE*>(views_ptr);
+          auto dest_ptr = reinterpret_cast<DOUBLE*>(dest_views);
+          while (svptest_first(svptrue_b64(), svemask)) {
+            // Load & zero-extend
+            svuint64_t offsets = svld1uw_u64(svemask, &codes_ptr[row_i]);
+            svfloat64_t values = svld1_gather_u64index_f64(svemask, dict_ptr, offsets);
+            svst1_f64(svemask, dest_ptr + row_i, values);
+            row_i += VECTOR_WIDTH;
+            svemask = svwhilelt_b64(row_i, tuple_count);
+          }
+        },
+        {
+          static_assert(sizeof(*views_ptr) == 8);
+          static_assert(SIMD_EXTRA_BYTES >= 4 * sizeof(__m256i));
+          if (tuple_count >= 16) {
+            while (row_i < tuple_count - 15) {
+              // We cannot write out of bounds here like we do for other dict
+              // implementations because it would destroy the string data.
 
-        // Store values.
-        _mm256_storeu_si256(reinterpret_cast<__m256i*>(dest_views + 0), values_0);
-        _mm256_storeu_si256(reinterpret_cast<__m256i*>(dest_views + 4), values_1);
-        _mm256_storeu_si256(reinterpret_cast<__m256i*>(dest_views + 8), values_2);
-        _mm256_storeu_si256(reinterpret_cast<__m256i*>(dest_views + 12), values_3);
+              // Load codes.
+              __m128i codes_0 = _mm_loadu_si128(reinterpret_cast<__m128i*>(decompressed_codes + 0));
+              __m128i codes_1 = _mm_loadu_si128(reinterpret_cast<__m128i*>(decompressed_codes + 4));
+              __m128i codes_2 = _mm_loadu_si128(reinterpret_cast<__m128i*>(decompressed_codes + 8));
+              __m128i codes_3 =
+                  _mm_loadu_si128(reinterpret_cast<__m128i*>(decompressed_codes + 12));
 
-        decompressed_codes += 16;
-        dest_views += 16;
-        row_i += 16;
-      }
-    }
-#endif
+              // Gather values.
+              __m256i values_0 =
+                  _mm256_i32gather_epi64(reinterpret_cast<long long*>(views_ptr), codes_0, 8);
+              __m256i values_1 =
+                  _mm256_i32gather_epi64(reinterpret_cast<long long*>(views_ptr), codes_1, 8);
+              __m256i values_2 =
+                  _mm256_i32gather_epi64(reinterpret_cast<long long*>(views_ptr), codes_2, 8);
+              __m256i values_3 =
+                  _mm256_i32gather_epi64(reinterpret_cast<long long*>(views_ptr), codes_3, 8);
 
-    // Write remaining values (up to 15)
+              // Store values.
+              _mm256_storeu_si256(reinterpret_cast<__m256i*>(dest_views + 0), values_0);
+              _mm256_storeu_si256(reinterpret_cast<__m256i*>(dest_views + 4), values_1);
+              _mm256_storeu_si256(reinterpret_cast<__m256i*>(dest_views + 8), values_2);
+              _mm256_storeu_si256(reinterpret_cast<__m256i*>(dest_views + 12), values_3);
+
+              decompressed_codes += 16;
+              dest_views += 16;
+              row_i += 16;
+            }
+          }
+        });
     while (row_i < tuple_count) {
       *dest_views++ = views_ptr[*decompressed_codes++];
       row_i++;
     }
+#else
+    while (row_i < tuple_count) {
+      *dest_views++ = views_ptr[*decompressed_codes++];
+      row_i++;
+    }
+#endif
   }
 
   return true;
