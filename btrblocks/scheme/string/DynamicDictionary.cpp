@@ -496,7 +496,7 @@ bool DynamicDictionary::decompressNoCopy(u8* dest,
                                         tuple_count, level + 1);
 
     static_assert(sizeof(StringPointerArrayViewer::View) == 8);
-#ifdef BTR_USE_SIMD // TODO: SVE
+#ifdef BTR_USE_SIMD // TODO: SVE - This code seems unused, or at least not covered by tests?
     for (u32 run = 0; run < runs_count; run++) {
       INTEGER code = values_ptr[run];
       auto* data = reinterpret_cast<long long*>(views_ptr + code);
@@ -528,22 +528,22 @@ bool DynamicDictionary::decompressNoCopy(u8* dest,
                             level + 1);
 
     u32 row_i = 0;
-#ifdef BTR_USE_SIMD  // TODO: SVE
+#ifdef BTR_USE_SIMD
     BTR_IFELSEARM_SVE(
         {
-          static_assert(sizeof(*dest_views) == sizeof(DOUBLE));
+          static_assert(sizeof(*dest_views) == sizeof(u64));
 
           auto svemask = svwhilelt_b64(row_i, tuple_count);
           const uint64_t VECTOR_WIDTH = svcntd();
 
           const auto codes_ptr = reinterpret_cast<const u32*>(decompressed_codes);
-          const auto dict_ptr = reinterpret_cast<const DOUBLE*>(views_ptr);
-          auto dest_ptr = reinterpret_cast<DOUBLE*>(dest_views);
+          const auto dict_ptr = reinterpret_cast<const u64*>(views_ptr);
+          auto dest_ptr = reinterpret_cast<u64*>(dest_views);
           while (svptest_first(svptrue_b64(), svemask)) {
             // Load & zero-extend
             svuint64_t offsets = svld1uw_u64(svemask, &codes_ptr[row_i]);
-            svfloat64_t values = svld1_gather_u64index_f64(svemask, dict_ptr, offsets);
-            svst1_f64(svemask, dest_ptr + row_i, values);
+            svuint64_t values = svld1_gather_u64index_u64(svemask, dict_ptr, offsets);
+            svst1_u64(svemask, dest_ptr + row_i, values);
             row_i += VECTOR_WIDTH;
             svemask = svwhilelt_b64(row_i, tuple_count);
           }

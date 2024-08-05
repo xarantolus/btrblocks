@@ -1,4 +1,5 @@
 #pragma once
+#include <arm_sve.h>
 #include "common/SIMD.hpp"
 #include "common/Utils.hpp"
 #include "compression/SchemePicker.hpp"
@@ -141,7 +142,7 @@ inline void TDynamicDictionary<INTEGER, IntegerScheme, SInteger32Stats, IntegerS
           auto offsets = svld1_u32(svemask, &codes_ptr[i]);
           auto values = svld1_gather_u32index_u32(svemask, dict_ptr, offsets);
           svst1_u32(svemask, dest_ptr + i, values);
-          i+=VECTOR_WIDTH;
+          i += VECTOR_WIDTH;
           svemask = svwhilelt_b32(i, tuple_count);
         }
       },
@@ -204,40 +205,66 @@ inline void TDynamicDictionary<DOUBLE, DoubleScheme, DoubleStats, DoubleSchemeTy
 
   auto dict = reinterpret_cast<const DOUBLE*>(col_struct.data);
   u32 i = 0;
-#ifdef BTR_USE_SIMD  // TODO: SVE
+#ifdef BTR_USE_SIMD
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wuninitialized"
-  if (tuple_count >= 16) {
-    while (i < tuple_count - 15) {
-      // Load codes
-      __m128i codes_0 = _mm_loadu_si128(reinterpret_cast<__m128i*>(codes + 0));
-      __m128i codes_1 = _mm_loadu_si128(reinterpret_cast<__m128i*>(codes + 4));
-      __m128i codes_2 = _mm_loadu_si128(reinterpret_cast<__m128i*>(codes + 8));
-      __m128i codes_3 = _mm_loadu_si128(reinterpret_cast<__m128i*>(codes + 12));
+  BTR_IFELSEARM_SVE(
+      {
+        static_assert(sizeof(*dest) == sizeof(DOUBLE));
 
-      // gather values
-      __m256d values_0 = _mm256_i32gather_pd(dict, codes_0, 8);
-      __m256d values_1 = _mm256_i32gather_pd(dict, codes_1, 8);
-      __m256d values_2 = _mm256_i32gather_pd(dict, codes_2, 8);
-      __m256d values_3 = _mm256_i32gather_pd(dict, codes_3, 8);
+        auto svemask = svwhilelt_b64(i, tuple_count);
+        const uint64_t VECTOR_WIDTH = svcntd();
 
-      // store values
-      _mm256_storeu_pd(dest + 0, values_0);
-      _mm256_storeu_pd(dest + 4, values_1);
-      _mm256_storeu_pd(dest + 8, values_2);
-      _mm256_storeu_pd(dest + 12, values_3);
+        const auto codes_ptr = reinterpret_cast<const u32*>(codes);
+        const auto dict_ptr = reinterpret_cast<const DOUBLE*>(dict);
+        auto dest_ptr = reinterpret_cast<DOUBLE*>(dest);
+        while (svptest_first(svptrue_b64(), svemask)) {
+          // Load & zero-extend
+          svuint64_t offsets = svld1uw_u64(svemask, &codes_ptr[i]);
+          svfloat64_t values = svld1_gather_u64index_f64(svemask, dict_ptr, offsets);
+          svst1_f64(svemask, dest_ptr + i, values);
+          i += VECTOR_WIDTH;
+          svemask = svwhilelt_b64(i, tuple_count);
+        }
+      },
+      {
+        if (tuple_count >= 16) {
+          while (i < tuple_count - 15) {
+            // Load codes
+            __m128i codes_0 = _mm_loadu_si128(reinterpret_cast<__m128i*>(codes + 0));
+            __m128i codes_1 = _mm_loadu_si128(reinterpret_cast<__m128i*>(codes + 4));
+            __m128i codes_2 = _mm_loadu_si128(reinterpret_cast<__m128i*>(codes + 8));
+            __m128i codes_3 = _mm_loadu_si128(reinterpret_cast<__m128i*>(codes + 12));
 
-      dest += 16;
-      codes += 16;
-      i += 16;
-    }
-  }
+            // gather values
+            __m256d values_0 = _mm256_i32gather_pd(dict, codes_0, 8);
+            __m256d values_1 = _mm256_i32gather_pd(dict, codes_1, 8);
+            __m256d values_2 = _mm256_i32gather_pd(dict, codes_2, 8);
+            __m256d values_3 = _mm256_i32gather_pd(dict, codes_3, 8);
+
+            // store values
+            _mm256_storeu_pd(dest + 0, values_0);
+            _mm256_storeu_pd(dest + 4, values_1);
+            _mm256_storeu_pd(dest + 8, values_2);
+            _mm256_storeu_pd(dest + 12, values_3);
+
+            dest += 16;
+            codes += 16;
+            i += 16;
+          }
+        }
+
+        while (i < tuple_count) {
+          *dest++ = dict[*codes++];
+          i++;
+        }
+      });
 #pragma GCC diagnostic pop
-#endif
-
+#else
   while (i < tuple_count) {
     *dest++ = dict[*codes++];
     i++;
   }
+#endif
 }
 }  // namespace btrblocks
