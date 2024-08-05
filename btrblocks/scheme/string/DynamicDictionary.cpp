@@ -496,19 +496,43 @@ bool DynamicDictionary::decompressNoCopy(u8* dest,
                                         tuple_count, level + 1);
 
     static_assert(sizeof(StringPointerArrayViewer::View) == 8);
-#ifdef BTR_USE_SIMD // TODO: SVE - This code seems unused, or at least not covered by tests?
-    for (u32 run = 0; run < runs_count; run++) {
-      INTEGER code = values_ptr[run];
-      auto* data = reinterpret_cast<long long*>(views_ptr + code);
-      __m256i data_v = _mm256_set1_epi64x(*data);
-      INTEGER run_length = counts_ptr[run];
-      auto dest_view_simd = reinterpret_cast<__m256i*>(dest_views);
-      for (INTEGER repeat = 0; repeat < run_length; repeat += 4) {
-        _mm256_storeu_si256(dest_view_simd, data_v);
-        dest_view_simd++;
-      }
-      dest_views += run_length;
-    }
+#ifdef BTR_USE_SIMD
+    BTR_IFELSEARM_SVE(
+        {
+          for (u32 run_i = 0; run_i < runs_count; run_i++) {
+            static_assert(sizeof(values_ptr[run_i]) == 4, "SVE RLE requires 4-byte values");
+
+            const auto vec = svdup_s32(values_ptr[run_i]);
+            const u32 target_count = counts_ptr[run_i];
+            u32 current_count = 0;
+
+            svbool_t remaining_mask = svwhilelt_b32(CU(0), target_count);
+            auto dest_views_simd = reinterpret_cast<s32*>(dest_views);
+            while (svptest_first(svptrue_b32(), remaining_mask)) {
+              svst1_s32(remaining_mask, dest_views_simd + current_count, vec);
+
+              current_count += svcntp_b32(svptrue_b32(), remaining_mask);
+              remaining_mask = svwhilelt_b32(current_count, target_count);
+            }
+            assert(current_count == target_count);
+
+            dest_views += target_count;
+          }
+        },
+        {
+          for (u32 run = 0; run < runs_count; run++) {
+            INTEGER code = values_ptr[run];
+            auto* data = reinterpret_cast<long long*>(views_ptr + code);
+            __m256i data_v = _mm256_set1_epi64x(*data);
+            INTEGER run_length = counts_ptr[run];
+            auto dest_view_simd = reinterpret_cast<__m256i*>(dest_views);
+            for (INTEGER repeat = 0; repeat < run_length; repeat += 4) {
+              _mm256_storeu_si256(dest_view_simd, data_v);
+              dest_view_simd++;
+            }
+            dest_views += run_length;
+          }
+        });
 #else
     for (u32 run = 0; run < runs_count; run++) {
       INTEGER code = values_ptr[run];
