@@ -251,19 +251,42 @@ inline void TRLE<DOUBLE, DoubleScheme, DoubleStats, DoubleSchemeType>::decompres
   }
   // -------------------------------------------------------------------------------------
   auto write_ptr = dest;
-#ifdef BTR_USE_SIMD  // TODO: SVE
-  for (u32 run_i = 0; run_i < col_struct.runs_count; run_i++) {
-    auto target_ptr = write_ptr + counts[run_i];
+#ifdef BTR_USE_SIMD
+  BTR_IFELSEARM_SVE(
+      {
+        for (u32 run_i = 0; run_i < col_struct.runs_count; run_i++) {
+          static_assert(sizeof(values[run_i]) == 8, "Double SVE RLE requires 8-byte values");
 
-    // set is a sequential operation
-    __m256d vec = _mm256_set1_pd(values[run_i]);
-    while (write_ptr < target_ptr) {
-      // store is performed in a single cycle
-      _mm256_storeu_pd(write_ptr, vec);
-      write_ptr += 4;
-    }
-    write_ptr = target_ptr;
-  }
+          const auto vec = svdup_f64(values[run_i]);
+          const u32 target_count = counts[run_i];
+          u32 current_count = 0;
+
+          svbool_t remaining_mask = svwhilelt_b64(CU(0), target_count);
+          while (svptest_first(svptrue_b64(), remaining_mask)) {
+            svst1_f64(remaining_mask, write_ptr + current_count, vec);
+
+            current_count += svcntp_b64(svptrue_b64(), remaining_mask);
+            remaining_mask = svwhilelt_b64(current_count, target_count);
+          }
+          assert(current_count == target_count);
+
+          write_ptr += target_count;
+        }
+      },
+      {
+        for (u32 run_i = 0; run_i < col_struct.runs_count; run_i++) {
+          auto target_ptr = write_ptr + counts[run_i];
+
+          // set is a sequential operation
+          __m256d vec = _mm256_set1_pd(values[run_i]);
+          while (write_ptr < target_ptr) {
+            // store is performed in a single cycle
+            _mm256_storeu_pd(write_ptr, vec);
+            write_ptr += 4;
+          }
+          write_ptr = target_ptr;
+        }
+      });
 #else
   for (u32 run_i = 0; run_i < col_struct.runs_count; run_i++) {
     auto val = values[run_i];
