@@ -33,6 +33,8 @@
 // This allows setting SVE_ENABLED=false for ARM, which allows us to compare NEON vs. SVE
 #if defined(BTR_SVE_ENABLED) and BTR_SVE_ENABLED
 #define SVE_ENABLED (getauxval(AT_HWCAP) & HWCAP_SVE)
+#else
+#define SVE_ENABLED false
 #endif
 #endif
 
