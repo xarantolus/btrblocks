@@ -18,7 +18,9 @@ endif()
 
 if (${NO_SVE})
     message("Disabling SVE for btrblocks")
-    add_compile_definitions(SVE_ENABLED=0)
+    add_compile_definitions(BTR_SVE_ENABLED=0)
+elseif(${IS_AARCH64})
+    add_compile_definitions(BTR_SVE_ENABLED=1)
 endif()
 
 

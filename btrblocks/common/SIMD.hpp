@@ -10,8 +10,8 @@
 #define SIMD_EXTRA_BYTES 0
 #define SIMD_EXTRA_ELEMENTS(TYPE) 0
 
-#ifdef SVE_ENABLED
-#warning "SVE_ENABLED is set, but has no effect when not using SIMD (BTR_FLAG_NO_SIMD)"
+#if defined(BTR_SVE_ENABLED) and BTR_SVE_ENABLED
+#warning "BTR_SVE_ENABLED is set, but has no effect when not using SIMD (BTR_FLAG_NO_SIMD)"
 #endif
 #define SVE_ENABLED false
 // -------------------------------- Using SIMD ----------------------------------
@@ -20,7 +20,7 @@
 
 #if (defined(__x86_64__) || defined(__i386__))
 #include <immintrin.h>
-#ifdef SVE_ENABLED
+#ifdef defined(BTR_SVE_ENABLED) and BTR_SVE_ENABLED
 #warning "SVE_ENABLED is set, but it has no effect on x86 (SVE is not available here)"
 #endif
 #define SVE_ENABLED false
@@ -31,7 +31,7 @@
 #include <arm_sve.h>
 #include <sys/auxv.h>
 // This allows setting SVE_ENABLED=false for ARM, which allows us to compare NEON vs. SVE
-#ifndef SVE_ENABLED
+#if defined(BTR_SVE_ENABLED) and BTR_SVE_ENABLED
 #define SVE_ENABLED (getauxval(AT_HWCAP) & HWCAP_SVE)
 #endif
 #endif
