@@ -20,7 +20,7 @@
 
 #if (defined(__x86_64__) || defined(__i386__))
 #include <immintrin.h>
-#ifdef defined(BTR_SVE_ENABLED) and BTR_SVE_ENABLED
+#if defined(BTR_SVE_ENABLED) and BTR_SVE_ENABLED
 #warning "SVE_ENABLED is set, but it has no effect on x86 (SVE is not available here)"
 #endif
 #define SVE_ENABLED false
