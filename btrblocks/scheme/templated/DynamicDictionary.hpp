@@ -1,5 +1,4 @@
 #pragma once
-#include <arm_sve.h>
 #include "common/SIMD.hpp"
 #include "common/Utils.hpp"
 #include "compression/SchemePicker.hpp"
