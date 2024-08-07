@@ -32,7 +32,11 @@
 #include <sys/auxv.h>
 // This allows setting SVE_ENABLED=false for ARM, which allows us to compare NEON vs. SVE
 #if defined(BTR_SVE_ENABLED) and BTR_SVE_ENABLED
+#if defined(__ARM_FEATURE_SVE) and __ARM_FEATURE_SVE
+#define SVE_ENABLED true
+#else
 #define SVE_ENABLED (getauxval(AT_HWCAP) & HWCAP_SVE)
+#endif
 #else
 #define SVE_ENABLED false
 #endif
