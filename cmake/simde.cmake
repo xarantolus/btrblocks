@@ -11,3 +11,7 @@ target_include_directories(simde INTERFACE "${simde_SOURCE_DIR}")
 
 # Enables native aliases. Not ideal but makes it easier to convert old code.
 target_compile_definitions(simde INTERFACE SIMDE_ENABLE_NATIVE_ALIASES)
+
+if(SIMDE_ARM_SVE_NO_NATIVE)
+    target_compile_definitions(simde INTERFACE SIMDE_ARM_SVE_NO_NATIVE)
+endif()
