@@ -131,6 +131,27 @@ class TRLE {
   // -------------------------------------------------------------------------------------
 };
 
+#if defined(__aarch64__)
+template <typename T>
+__attribute__((target("+sve"))) inline T* decompress_sve_loop(
+  T* dest,
+  const RLEStructure col_struct, const T* values, int* counts) {
+  for (u32 run_i = 0; run_i < col_struct.runs_count; run_i++) {
+    auto value = values[run_i];
+    auto count = counts[run_i];
+
+    #pragma clang loop vectorize(assume_safety) vectorize_width(scalable)
+    for (u32 row_i = 0; row_i < count; row_i++) {
+      dest[row_i] = value;
+    }
+
+    dest += count;
+  }
+  return dest;
+}
+#endif
+
+
 template <>
 inline void TRLE<INTEGER, IntegerScheme, SInteger32Stats, IntegerSchemeType>::decompressColumn(
     INTEGER* dest,
@@ -167,24 +188,7 @@ inline void TRLE<INTEGER, IntegerScheme, SInteger32Stats, IntegerSchemeType>::de
 #ifdef BTR_USE_SIMD
   BTR_IFELSEARM_SVE(
       {
-        for (u32 run_i = 0; run_i < col_struct.runs_count; run_i++) {
-          static_assert(sizeof(values[run_i]) == 4, "SVE RLE requires 4-byte values");
-
-          const auto vec = svdup_s32(values[run_i]);
-          const u32 target_count = counts[run_i];
-          u32 current_count = 0;
-
-          svbool_t remaining_mask = svwhilelt_b32(CU(0), target_count);
-          while (svptest_first(svptrue_b32(), remaining_mask)) {
-            svst1_s32(remaining_mask, write_ptr + current_count, vec);
-
-            current_count += svcntp_b32(svptrue_b32(), remaining_mask);
-            remaining_mask = svwhilelt_b32(current_count, target_count);
-          }
-          assert(current_count == target_count);
-
-          write_ptr += target_count;
-        }
+        write_ptr = decompress_sve_loop<INTEGER>(write_ptr, col_struct, values, counts);
       },
       {
         // On non-SVE ARM machines, this generates NEON code
@@ -254,24 +258,7 @@ inline void TRLE<DOUBLE, DoubleScheme, DoubleStats, DoubleSchemeType>::decompres
 #ifdef BTR_USE_SIMD
   BTR_IFELSEARM_SVE(
       {
-        for (u32 run_i = 0; run_i < col_struct.runs_count; run_i++) {
-          static_assert(sizeof(values[run_i]) == 8, "Double SVE RLE requires 8-byte values");
-
-          const auto vec = svdup_f64(values[run_i]);
-          const u32 target_count = counts[run_i];
-          u32 current_count = 0;
-
-          svbool_t remaining_mask = svwhilelt_b64(CU(0), target_count);
-          while (svptest_first(svptrue_b64(), remaining_mask)) {
-            svst1_f64(remaining_mask, write_ptr + current_count, vec);
-
-            current_count += svcntp_b64(svptrue_b64(), remaining_mask);
-            remaining_mask = svwhilelt_b64(current_count, target_count);
-          }
-          assert(current_count == target_count);
-
-          write_ptr += target_count;
-        }
+        write_ptr = decompress_sve_loop<DOUBLE>(write_ptr, col_struct, values, counts);
       },
       {
         for (u32 run_i = 0; run_i < col_struct.runs_count; run_i++) {
