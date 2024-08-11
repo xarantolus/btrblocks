@@ -134,7 +134,7 @@ class TRLE {
 #if defined(__aarch64__)
 
 template <typename T>
-__attribute__((target_clones("+sve2", "+sve", "default"))) inline T*
+__attribute__((target_clones("default", "+sve2", "+sve"))) inline T*
 decompress_sve_loop(T* dest, const RLEStructure col_struct, const T* values, int* counts) {
   for (u32 run_i = 0; run_i < col_struct.runs_count; run_i++) {
     auto value = values[run_i];
