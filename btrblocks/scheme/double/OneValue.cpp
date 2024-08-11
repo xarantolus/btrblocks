@@ -35,16 +35,15 @@ u32 OneValue::compress(const DOUBLE* src,
 }
 // -------------------------------------------------------------------------------------
 
-#if defined(__aarch64__)
-__attribute__((target_clones("default", "+sve2", "+sve"))) inline void
-decompress_sve_loop(DOUBLE* dest, const OneValueStructure& col_struct, u32 tuple_count) {
+inline void decompress_sve_loop(DOUBLE* dest,
+                                const OneValueStructure& col_struct,
+                                u32 tuple_count) {
 #pragma GCC ivdep
 #pragma clang loop vectorize(assume_safety) vectorize_width(scalable) interleave(enable)
   for (u32 row_i = 0; row_i < tuple_count; row_i++) {
     dest[row_i] = col_struct.one_value;
   }
 }
-#endif
 
 inline void decompress_non_sve_loop(DOUBLE* dest,
                                     const OneValueStructure& col_struct,
