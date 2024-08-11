@@ -28,9 +28,8 @@ u32 OneValue::compress(const INTEGER* src, const BITMAP*, u8* dest, SInteger32St
 }
 // -------------------------------------------------------------------------------------
 #if defined(__aarch64__)
-__attribute__((target("+sve"))) inline void decompress_sve_loop(INTEGER* dest,
-                                                                const OneValueStructure& col_struct,
-                                                                u32 tuple_count) {
+__attribute__((target_clones("default", "+sve2", "+sve"))) inline void
+decompress_sve_loop(INTEGER* dest, const OneValueStructure& col_struct, u32 tuple_count) {
 #pragma GCC ivdep
 #pragma clang loop vectorize(assume_safety) vectorize_width(scalable) interleave(enable)
   for (u32 row_i = 0; row_i < tuple_count; row_i++) {
