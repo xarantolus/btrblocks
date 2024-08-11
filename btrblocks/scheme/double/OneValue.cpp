@@ -38,7 +38,8 @@ u32 OneValue::compress(const DOUBLE* src,
 inline void decompress_sve_loop(DOUBLE* dest,
                                 const OneValueStructure& col_struct,
                                 u32 tuple_count) {
-#pragma clang loop vectorize(assume_safety) vectorize_width(scalable)
+#pragma GCC ivdep
+#pragma clang loop vectorize(assume_safety) vectorize_width(scalable) interleave(enable)
   for (u32 row_i = 0; row_i < tuple_count; row_i++) {
     dest[row_i] = col_struct.one_value;
   }

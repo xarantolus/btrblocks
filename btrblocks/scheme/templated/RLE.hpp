@@ -140,7 +140,8 @@ __attribute__((target("+sve"))) inline T* decompress_sve_loop(
     auto value = values[run_i];
     auto count = counts[run_i];
 
-    #pragma clang loop vectorize(assume_safety) vectorize_width(scalable)
+#pragma GCC ivdep
+#pragma clang loop vectorize(assume_safety) vectorize_width(scalable) interleave(enable)
     for (u32 row_i = 0; row_i < count; row_i++) {
       dest[row_i] = value;
     }
