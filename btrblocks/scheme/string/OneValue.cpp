@@ -169,18 +169,8 @@ bool OneValue::decompressNoCopy(u8* dest,
   BTR_IFELSEARM_SVE(
       {
         static_assert(sizeof(long long*) == sizeof(s64), "Expected pointer to have size 64 bit");
-        auto dest_view_simd = reinterpret_cast<s64*>(dest_views);
-
-        u32 current_count = 0;
-        svbool_t remaining_mask = svwhilelt_b64(CU(0), tuple_count);
-
-        const auto data_v = svdup_s64(*data);
-        while (svptest_first(svptrue_b64(), remaining_mask)) {
-          svst1_s64(remaining_mask, dest_view_simd + current_count, data_v);
-
-          current_count += svcntp_b64(svptrue_b64(), remaining_mask);
-          remaining_mask = svwhilelt_b64(current_count, tuple_count);
-        }
+        auto dest_view = reinterpret_cast<s64*>(dest_views);
+        std::fill(dest_view, dest_view + tuple_count, *data);
       },
       {
         auto dest_view_simd = reinterpret_cast<__m256i*>(dest_views);
