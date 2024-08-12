@@ -35,28 +35,15 @@ u32 OneValue::compress(const DOUBLE* src,
 }
 // -------------------------------------------------------------------------------------
 
-inline void decompress_sve_loop(DOUBLE* dest,
-                                const OneValueStructure& col_struct,
-                                u32 tuple_count) {
-#pragma GCC ivdep
-#pragma clang loop vectorize(assume_safety) vectorize_width(scalable) interleave(enable)
-  for (u32 row_i = 0; row_i < tuple_count; row_i++) {
-    dest[row_i] = col_struct.one_value;
-  }
-}
-
-inline void decompress_non_sve_loop(DOUBLE* dest,
-                                    const OneValueStructure& col_struct,
-                                    u32 tuple_count) {
-  for (u32 row_i = 0; row_i < tuple_count; row_i++) {
-    dest[row_i] = col_struct.one_value;
-  }
-}
 void OneValue::decompress(DOUBLE* dest, BitmapWrapper*, const u8* src, u32 tuple_count, u32 level) {
   const auto& col_struct = *reinterpret_cast<const OneValueStructure*>(src);
   BTR_IFELSEARM_SVE(
-      { decompress_sve_loop(dest, col_struct, tuple_count); },
-      { decompress_non_sve_loop(dest, col_struct, tuple_count); });
+      { std::fill(dest, dest + tuple_count, col_struct.one_value); },
+      {
+        for (u32 row_i = 0; row_i < tuple_count; row_i++) {
+          dest[row_i] = col_struct.one_value;
+        }
+      });
 }
 // -------------------------------------------------------------------------------------
 }  // namespace btrblocks::legacy::doubles

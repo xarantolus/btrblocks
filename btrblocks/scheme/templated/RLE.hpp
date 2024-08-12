@@ -133,25 +133,19 @@ class TRLE {
 
 #if defined(__aarch64__)
 template <typename T>
-__attribute__((target("+sve"))) inline T* decompress_sve_loop(
-  T* dest,
-  const RLEStructure col_struct, const T* values, int* counts) {
+__attribute__((target("+sve"))) inline T* decompress_sve_loop(T* dest,
+                                                              const RLEStructure col_struct,
+                                                              const T* values,
+                                                              int* counts) {
   for (u32 run_i = 0; run_i < col_struct.runs_count; run_i++) {
     auto value = values[run_i];
     auto count = counts[run_i];
-
-#pragma GCC ivdep
-#pragma clang loop vectorize(assume_safety) vectorize_width(scalable) interleave(enable)
-    for (u32 row_i = 0; row_i < count; row_i++) {
-      dest[row_i] = value;
-    }
-
+    std::fill(dest, dest + count, value);
     dest += count;
   }
   return dest;
 }
 #endif
-
 
 template <>
 inline void TRLE<INTEGER, IntegerScheme, SInteger32Stats, IntegerSchemeType>::decompressColumn(
@@ -188,9 +182,7 @@ inline void TRLE<INTEGER, IntegerScheme, SInteger32Stats, IntegerSchemeType>::de
   auto write_ptr = dest;
 #ifdef BTR_USE_SIMD
   BTR_IFELSEARM_SVE(
-      {
-        write_ptr = decompress_sve_loop<INTEGER>(write_ptr, col_struct, values, counts);
-      },
+      { write_ptr = decompress_sve_loop<INTEGER>(write_ptr, col_struct, values, counts); },
       {
         // On non-SVE ARM machines, this generates NEON code
         for (u32 run_i = 0; run_i < col_struct.runs_count; run_i++) {
@@ -258,9 +250,7 @@ inline void TRLE<DOUBLE, DoubleScheme, DoubleStats, DoubleSchemeType>::decompres
   auto write_ptr = dest;
 #ifdef BTR_USE_SIMD
   BTR_IFELSEARM_SVE(
-      {
-        write_ptr = decompress_sve_loop<DOUBLE>(write_ptr, col_struct, values, counts);
-      },
+      { write_ptr = decompress_sve_loop<DOUBLE>(write_ptr, col_struct, values, counts); },
       {
         for (u32 run_i = 0; run_i < col_struct.runs_count; run_i++) {
           auto target_ptr = write_ptr + counts[run_i];
