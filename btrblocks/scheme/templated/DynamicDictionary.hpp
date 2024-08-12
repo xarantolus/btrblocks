@@ -91,6 +91,8 @@ class TDynamicDictionary {
                       level + 1);
     // -------------------------------------------------------------------------------------
     auto dict = reinterpret_cast<const NumberType*>(col_struct.data);
+#pragma GCC ivdep
+#pragma clang loop vectorize(assume_safety) vectorize_width(scalable)
     for (u32 i = 0; i < tuple_count; i++) {
       dest[i] = dict[codes[i]];
     }
@@ -104,6 +106,18 @@ class TDynamicDictionary {
            scheme.fullDescription(col_struct.data + col_struct.codes_offset);
   }
 };
+
+#if defined(__aarch64__)
+template <typename T, typename C>
+inline void decompress_autovectorized(T* dest, const C* codes, const T* dict, u32 tuple_count) {
+#pragma GCC ivdep
+#pragma clang loop vectorize(assume_safety) vectorize_width(scalable)
+  for (u32 row_i = 0; row_i < tuple_count; row_i++) {
+    dest[row_i] = dict[codes[row_i]];
+  }
+}
+
+#endif
 
 template <>
 inline void TDynamicDictionary<INTEGER, IntegerScheme, SInteger32Stats, IntegerSchemeType>::
@@ -127,24 +141,7 @@ inline void TDynamicDictionary<INTEGER, IntegerScheme, SInteger32Stats, IntegerS
   u32 i = 0;
 #ifdef BTR_USE_SIMD
   BTR_IFELSEARM_SVE(
-      {
-        static_assert(sizeof(*dest) == sizeof(u32));
-        // Decompress codes are the indicies into dict
-        u32 i = 0;
-        auto svemask = svwhilelt_b32(i, tuple_count);
-        const uint64_t VECTOR_WIDTH = svcntw();
-
-        const u32* codes_ptr = reinterpret_cast<const uint32_t*>(codes);
-        const u32* dict_ptr = reinterpret_cast<const uint32_t*>(dict);
-        u32* dest_ptr = reinterpret_cast<u32*>(dest);
-        while (svptest_first(svptrue_b32(), svemask)) {
-          auto offsets = svld1_u32(svemask, &codes_ptr[i]);
-          auto values = svld1_gather_u32index_u32(svemask, dict_ptr, offsets);
-          svst1_u32(svemask, dest_ptr + i, values);
-          i += VECTOR_WIDTH;
-          svemask = svwhilelt_b32(i, tuple_count);
-        }
-      },
+      { decompress_autovectorized(dest, codes, dict, tuple_count); },
       {
         if (tuple_count >= 32) {
           while (i < tuple_count - 31) {
@@ -208,24 +205,7 @@ inline void TDynamicDictionary<DOUBLE, DoubleScheme, DoubleStats, DoubleSchemeTy
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wuninitialized"
   BTR_IFELSEARM_SVE(
-      {
-        static_assert(sizeof(*dest) == sizeof(DOUBLE));
-
-        auto svemask = svwhilelt_b64(i, tuple_count);
-        const uint64_t VECTOR_WIDTH = svcntd();
-
-        const auto codes_ptr = reinterpret_cast<const u32*>(codes);
-        const auto dict_ptr = reinterpret_cast<const DOUBLE*>(dict);
-        auto dest_ptr = reinterpret_cast<DOUBLE*>(dest);
-        while (svptest_first(svptrue_b64(), svemask)) {
-          // Load & zero-extend
-          svuint64_t offsets = svld1uw_u64(svemask, &codes_ptr[i]);
-          svfloat64_t values = svld1_gather_u64index_f64(svemask, dict_ptr, offsets);
-          svst1_f64(svemask, dest_ptr + i, values);
-          i += VECTOR_WIDTH;
-          svemask = svwhilelt_b64(i, tuple_count);
-        }
-      },
+      { decompress_autovectorized(dest, codes, dict, tuple_count); },
       {
         if (tuple_count >= 16) {
           while (i < tuple_count - 15) {

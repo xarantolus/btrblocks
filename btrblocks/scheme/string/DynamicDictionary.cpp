@@ -86,8 +86,8 @@ u32 DynamicDictionary::compress(const btrblocks::StringArrayViewer src,
     // Encoder
     // TODO: use memcpy instead of export/import (Note: I still use
     // FSST_MAXHEADER ~2KiB )
-    fsst_encoder_t* encoder =
-        fsst_create(fsst_n, (unsigned long*) input_string_lengths.get(), input_string_buffers.get(), 0);
+    fsst_encoder_t* encoder = fsst_create(fsst_n, (unsigned long*)input_string_lengths.get(),
+                                          input_string_buffers.get(), 0);
     die_if(fsst_export(encoder, write_ptr) > 0);
     auto fsst_table_used_space = FSST_MAXHEADER;
     // -------------------------------------------------------------------------------------
@@ -97,8 +97,9 @@ u32 DynamicDictionary::compress(const btrblocks::StringArrayViewer src,
     // -------------------------------------------------------------------------------------
     // Compress
     const u64 output_buffer_size = 7 + 4 * stats.total_unique_length;  // fake
-    if (fsst_compress(encoder, fsst_n, (unsigned long*) input_string_lengths.get(), input_string_buffers.get(),
-                      output_buffer_size, write_ptr, (unsigned long*) output_string_lengths.get(),
+    if (fsst_compress(encoder, fsst_n, (unsigned long*)input_string_lengths.get(),
+                      input_string_buffers.get(), output_buffer_size, write_ptr,
+                      (unsigned long*)output_string_lengths.get(),
                       output_string_buffers.get()) != fsst_n) {
       throw Generic_Exception("FSST Compression failed !");
     }
@@ -418,6 +419,28 @@ void DynamicDictionary::decompress(u8* dest,
   }
 }
 
+#if defined(__aarch64__)
+template <typename T, typename C>
+inline void decompress_autovectorized(T* dest, const C* codes, const T* dict, u32 tuple_count) {
+#pragma GCC ivdep
+#pragma clang loop vectorize(assume_safety) vectorize_width(scalable)
+  for (u32 row_i = 0; row_i < tuple_count; row_i++) {
+    dest[row_i] = dict[codes[row_i]];
+  }
+}
+
+template <typename T>
+inline T* decompress_sve_loop(T* dest, const u32 runs, const T* values, const int* counts) {
+  for (u32 run_i = 0; run_i < runs; run_i++) {
+    auto value = values[run_i];
+    auto count = counts[run_i];
+    std::fill(dest, dest + count, value);
+    dest += count;
+  }
+  return dest;
+}
+#endif
+
 bool DynamicDictionary::decompressNoCopy(u8* dest,
                                          BitmapWrapper*,
                                          const u8* src,
@@ -499,25 +522,8 @@ bool DynamicDictionary::decompressNoCopy(u8* dest,
 #ifdef BTR_USE_SIMD
     BTR_IFELSEARM_SVE(
         {
-          for (u32 run_i = 0; run_i < runs_count; run_i++) {
-            static_assert(sizeof(values_ptr[run_i]) == 4, "SVE RLE requires 4-byte values");
-
-            const auto vec = svdup_s32(values_ptr[run_i]);
-            const u32 target_count = counts_ptr[run_i];
-            u32 current_count = 0;
-
-            svbool_t remaining_mask = svwhilelt_b32(CU(0), target_count);
-            auto dest_views_simd = reinterpret_cast<s32*>(dest_views);
-            while (svptest_first(svptrue_b32(), remaining_mask)) {
-              svst1_s32(remaining_mask, dest_views_simd + current_count, vec);
-
-              current_count += svcntp_b32(svptrue_b32(), remaining_mask);
-              remaining_mask = svwhilelt_b32(current_count, target_count);
-            }
-            assert(current_count == target_count);
-
-            dest_views += target_count;
-          }
+          auto dest_views_simd = reinterpret_cast<s32*>(dest_views);
+          decompress_sve_loop(dest_views_simd, runs_count, values_ptr, counts_ptr);
         },
         {
           for (u32 run = 0; run < runs_count; run++) {
@@ -554,24 +560,7 @@ bool DynamicDictionary::decompressNoCopy(u8* dest,
     u32 row_i = 0;
 #ifdef BTR_USE_SIMD
     BTR_IFELSEARM_SVE(
-        {
-          static_assert(sizeof(*dest_views) == sizeof(u64));
-
-          auto svemask = svwhilelt_b64(row_i, tuple_count);
-          const uint64_t VECTOR_WIDTH = svcntd();
-
-          const auto codes_ptr = reinterpret_cast<const u32*>(decompressed_codes);
-          const auto dict_ptr = reinterpret_cast<const u64*>(views_ptr);
-          auto dest_ptr = reinterpret_cast<u64*>(dest_views);
-          while (svptest_first(svptrue_b64(), svemask)) {
-            // Load & zero-extend
-            svuint64_t offsets = svld1uw_u64(svemask, &codes_ptr[row_i]);
-            svuint64_t values = svld1_gather_u64index_u64(svemask, dict_ptr, offsets);
-            svst1_u64(svemask, dest_ptr + row_i, values);
-            row_i += VECTOR_WIDTH;
-            svemask = svwhilelt_b64(row_i, tuple_count);
-          }
-        },
+        { decompress_autovectorized(dest_views, decompressed_codes, views_ptr, tuple_count); },
         {
           static_assert(sizeof(*views_ptr) == 8);
           static_assert(SIMD_EXTRA_BYTES >= 4 * sizeof(__m256i));

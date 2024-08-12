@@ -65,6 +65,8 @@ inline void FDictDecompressColumn(NumberType* dest,
   // Get codes
   const auto codes = reinterpret_cast<const CodeType*>(src + col_struct.codes_offset);
   // -------------------------------------------------------------------------------------
+#pragma GCC ivdep
+#pragma clang loop vectorize(assume_safety) vectorize_width(scalable)
   for (u32 row_i = 0; row_i < tuple_count; row_i++) {
     dest[row_i] = col_struct.dict_slots[codes[row_i]];
   }
