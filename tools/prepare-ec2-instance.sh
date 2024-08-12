@@ -18,15 +18,15 @@ fi
 
 wget https://apt.llvm.org/llvm.sh
 chmod +x llvm.sh
-./llvm.sh 18 all
-ln -s /usr/bin/clang-18 /usr/bin/clang
-ln -s /usr/bin/clang++-18 /usr/bin/clang++
-ln -s /usr/bin/clangd-18 /usr/bin/clangd
-ln -s /usr/bin/clang-format-18 /usr/bin/clang-format
-ln -s /usr/bin/clang-tidy-18 /usr/bin/clang-tidy
-ln -s /usr/bin/ld.lld-18 /usr/bin/ld.lld
-ln -s /usr/bin/lld-18 /usr/bin/lld
-ln -s /usr/bin/lldb-18 /usr/bin/lldb
-update-alternatives --install /usr/bin/cc cc /usr/bin/clang 100
-update-alternatives --install /usr/bin/c++ c++ /usr/bin/clang++ 100
-update-alternatives --install /usr/bin/ld ld /usr/bin/ld.lld 100
+sudo ./llvm.sh 18 all
+sudo ln -s /usr/bin/clang-18 /usr/bin/clang
+sudo ln -s /usr/bin/clang++-18 /usr/bin/clang++
+sudo ln -s /usr/bin/clangd-18 /usr/bin/clangd
+sudo ln -s /usr/bin/clang-format-18 /usr/bin/clang-format
+sudo ln -s /usr/bin/clang-tidy-18 /usr/bin/clang-tidy
+sudo ln -s /usr/bin/ld.lld-18 /usr/bin/ld.lld
+sudo ln -s /usr/bin/lld-18 /usr/bin/lld
+sudo ln -s /usr/bin/lldb-18 /usr/bin/lldb
+sudo update-alternatives --install /usr/bin/cc cc /usr/bin/clang 100
+sudo update-alternatives --install /usr/bin/c++ c++ /usr/bin/clang++ 100
+sudo update-alternatives --install /usr/bin/ld ld /usr/bin/ld.lld 100
