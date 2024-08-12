@@ -9,11 +9,11 @@ set -eu
 if command -v apt > /dev/null; then
     # Use apt for dependencies
     sudo apt update
-    sudo apt -y install build-essential libssl-dev libcurl4-openssl-dev libbz2-dev libpq-dev tmux git htop tree linux-tools-common libboost-all-dev cmake libtbb-dev zlib1g-dev lsb-core wget gnupg
+    sudo apt -y install build-essential libssl-dev libcurl4-openssl-dev libbz2-dev libpq-dev tmux git htop tree linux-tools-common libboost-all-dev cmake libtbb-dev zlib1g-dev lsb-release wget gnupg
 else
     # Use yum for dependencies
     sudo yum -y groupinstall "Development Tools"
-    sudo yum -y install openssl-devel libcurl-devel bzip2-devel postgresql-devel tmux git htop tree perf boost-devel cmake tbb tbb-devel zlib-devel system-lsb-core wget gnupg
+    sudo yum -y install openssl-devel libcurl-devel bzip2-devel postgresql-devel tmux git htop tree perf boost-devel cmake tbb tbb-devel zlib-devel wget gnupg
 fi
 
 wget https://apt.llvm.org/llvm.sh
