@@ -44,3 +44,11 @@ string RLE::fullDescription(const u8* src) {
 // -------------------------------------------------------------------------------------
 }  // namespace btrblocks::doubles
 // -------------------------------------------------------------------------------------
+#if defined(__aarch64__)
+namespace btrblocks {
+template <>
+__attribute__((target("+sve"))) inline uint64_t sve_vector_width<DOUBLE>() {
+  return svcntd();
+}
+}  // namespace btrblocks
+#endif

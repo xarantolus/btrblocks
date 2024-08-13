@@ -29,6 +29,7 @@ struct NumberStats {
   u32 unique_count;
   u32 set_count;
   u32 average_run_length;
+  u32 run_count;
   bool is_sorted;
   // -------------------------------------------------------------------------------------
   tuple<vector<T>, vector<BITMAP>> samples(u32 n, u32 length) {
@@ -125,6 +126,7 @@ struct NumberStats {
     stats.average_run_length = CD(tuple_count) / CD(run_count);
     stats.unique_count = stats.distinct_values.size();
     stats.set_count = stats.tuple_count - stats.null_count;
+    stats.run_count = run_count;
     // -------------------------------------------------------------------------------------
     return stats;
   }
