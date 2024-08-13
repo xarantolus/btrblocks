@@ -1,4 +1,3 @@
-#if defined(__aarch64__)
 #include "RLE.hpp"
 #include "common/SIMD.hpp"
 #include "common/Units.hpp"
@@ -8,6 +7,7 @@ template <typename int_type>
 size_t compress_len(INTEGER* out_lengths,
                     int_type* out_values,
                     const int_type* data,
+                    const BITMAP* nullmap,
                     const INTEGER N) {
   if (N == 0) {
     return 0;
@@ -19,22 +19,42 @@ size_t compress_len(INTEGER* out_lengths,
   INTEGER out_len = 0;
 
   INTEGER i = 1;
-  for (; i < N; ++i) {
-    int_type c = data[i];
+  if (nullmap) {
+    for (; i < N; ++i) {
+      int_type c = data[i];
 
-    if (c == previous) {
-      continue;
+      if (c == previous || !nullmap[i]) {
+        continue;
+      }
+
+      // We have found an edge
+      INTEGER block_len = i - block_start_pos;
+      assert(block_len > 0);
+      out_lengths[out_len] = block_len;
+      out_values[out_len] = previous;
+      out_len++;
+
+      previous = c;
+      block_start_pos = i;
     }
+  } else {
+    for (; i < N; ++i) {
+      int_type c = data[i];
 
-    // We have found an edge
-    INTEGER block_len = i - block_start_pos;
-    assert(block_len > 0);
-    out_lengths[out_len] = block_len;
-    out_values[out_len] = previous;
-    out_len++;
+      if (c == previous) {
+        continue;
+      }
 
-    previous = c;
-    block_start_pos = i;
+      // We have found an edge
+      INTEGER block_len = i - block_start_pos;
+      assert(block_len > 0);
+      out_lengths[out_len] = block_len;
+      out_values[out_len] = previous;
+      out_len++;
+
+      previous = c;
+      block_start_pos = i;
+    }
   }
 
   INTEGER block_len = N - block_start_pos;
@@ -50,12 +70,15 @@ size_t compress_len(INTEGER* out_lengths,
 template size_t compress_len(INTEGER* out_lengths,
                              INTEGER* out_values,
                              const INTEGER* data,
+                             const BITMAP* nullmap,
                              const INTEGER N);
 template size_t compress_len(INTEGER* out_lengths,
                              DOUBLE* out_values,
                              const DOUBLE* data,
+                             const BITMAP* nullmap,
                              const INTEGER N);
 
+#if defined(__aarch64__)
 __attribute__((target("+sve"))) size_t compress_sve(INTEGER* out_lengths,
                                                     INTEGER* out_values,
                                                     const INTEGER* data,
@@ -173,5 +196,5 @@ __attribute__((target("+sve"))) size_t compress_sve(INTEGER* out_lengths,
 
   return result_len;
 }
-}  // namespace btrblocks
 #endif
+}  // namespace btrblocks

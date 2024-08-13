@@ -26,15 +26,18 @@ template <typename int_type>
 size_t compress_len(INTEGER* out_lengths,
                     int_type* out_values,
                     const int_type* data,
+                    const BITMAP* nullmap,
                     const INTEGER N);
 
 extern template size_t compress_len(INTEGER* out_lengths,
                                     s32* out_values,
                                     const s32* data,
+                                    const BITMAP* nullmap,
                                     const INTEGER N);
 extern template size_t compress_len(INTEGER* out_lengths,
                                     DOUBLE* out_values,
                                     const DOUBLE* data,
+                                    const BITMAP* nullmap,
                                     const INTEGER N);
 
 __attribute__((target("+sve"))) size_t compress_sve(INTEGER* out_lengths,
@@ -66,61 +69,10 @@ class TRLE {
     std::vector<INTEGER> rle_count;
     // -------------------------------------------------------------------------------------
     // RLE encoding
-    BTR_IFELSEARM_SVE(
-        {
-          // TODO: Is stats only the sampling, or also for the full compression? if yes, we can't
-          // rely on null_count or run_count etc.
-          if (nullmap == nullptr || stats.null_count) {
-            rle_values.resize(stats.run_count);
-            rle_count.resize(stats.run_count);
-
-            // arm_sve_len is better when there are many smaller runs, otherwise
-            // compress_len is better
-            if (stats.average_run_length < sve_vector_width<NumberType>()) {
-              // Probably better to use the implementation that handles compress better
-              auto res = compress_sve(rle_count.data(), rle_values.data(), src, stats.tuple_count);
-              assert(res == stats.run_count);
-            } else {
-              auto res = compress_len(rle_count.data(), rle_values.data(), src, stats.tuple_count);
-              assert(res == stats.run_count);
-            }
-          } else {
-            NumberType last_item = src[0];
-            INTEGER count = 1;
-            for (uint32_t row_i = 1; row_i < stats.tuple_count; row_i++) {
-              if (src[row_i] == last_item ||
-                  (nullmap != nullptr && !nullmap[row_i])) {  // the null trick brought
-                                                              // no compression benefits
-                count++;
-              } else {
-                rle_count.push_back(count);
-                rle_values.push_back(last_item);
-                last_item = src[row_i];
-                count = 1;
-              }
-            }
-            rle_count.push_back(count);
-            rle_values.push_back(last_item);
-          }
-        },
-        {
-          NumberType last_item = src[0];
-          INTEGER count = 1;
-          for (uint32_t row_i = 1; row_i < stats.tuple_count; row_i++) {
-            if (src[row_i] == last_item ||
-                (nullmap != nullptr && !nullmap[row_i])) {  // the null trick brought
-                                                            // no compression benefits
-              count++;
-            } else {
-              rle_count.push_back(count);
-              rle_values.push_back(last_item);
-              last_item = src[row_i];
-              count = 1;
-            }
-          }
-          rle_count.push_back(count);
-          rle_values.push_back(last_item);
-        });
+    rle_values.resize(stats.run_count);
+    rle_count.resize(stats.run_count);
+    auto res = compress_len(rle_count.data(), rle_values.data(), src, nullmap, stats.tuple_count);
+    assert(res == stats.run_count);
     // -------------------------------------------------------------------------------------
     col_struct.runs_count = rle_count.size();
     die_if(rle_count.size() == rle_values.size());
