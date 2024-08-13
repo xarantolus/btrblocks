@@ -3,10 +3,10 @@
 #include "common/Units.hpp"
 
 namespace btrblocks {
-template <typename int_type>
+template <typename data_type>
 size_t compress_len(INTEGER* out_lengths,
-                    int_type* out_values,
-                    const int_type* data,
+                    data_type* out_values,
+                    const data_type* data,
                     const BITMAP* nullmap,
                     const INTEGER N) {
   if (N == 0) {
@@ -14,14 +14,14 @@ size_t compress_len(INTEGER* out_lengths,
   }
 
   INTEGER block_start_pos = 0;
-  int_type previous = data[0];
+  data_type previous = data[0];
 
   INTEGER out_len = 0;
 
   INTEGER i = 1;
   if (nullmap) {
     for (; i < N; ++i) {
-      int_type c = data[i];
+      data_type c = data[i];
 
       if (c == previous || !nullmap[i]) {
         continue;
@@ -39,7 +39,7 @@ size_t compress_len(INTEGER* out_lengths,
     }
   } else {
     for (; i < N; ++i) {
-      int_type c = data[i];
+      data_type c = data[i];
 
       if (c == previous) {
         continue;

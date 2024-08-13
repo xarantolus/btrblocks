@@ -22,10 +22,10 @@ struct RLEStructure {
 template <typename elem_type>
 __attribute__((target("+sve"))) inline uint64_t sve_vector_width();
 
-template <typename int_type>
+template <typename data_type>
 size_t compress_len(INTEGER* out_lengths,
-                    int_type* out_values,
-                    const int_type* data,
+                    data_type* out_values,
+                    const data_type* data,
                     const BITMAP* nullmap,
                     const INTEGER N);
 
