@@ -1,5 +1,4 @@
 #pragma once
-#include <arm_sve.h>
 #include <cassert>
 #include <cstdint>
 #include "common/SIMD.hpp"
