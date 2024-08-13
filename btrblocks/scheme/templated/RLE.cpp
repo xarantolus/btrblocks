@@ -73,8 +73,8 @@ __attribute__((target("+sve"))) size_t compress_sve(INTEGER* out_lengths,
   svint32_t current;
   svint32_t predecessors;
 
-  int32_t last_value = out_values[0] = data[0];
-  uint16_t last_index = 0;
+  INTEGER last_value = out_values[0] = data[0];
+  INTEGER last_index = 0;
   svint32_t output_indices;
   do {
     assert(i % vl == 0);
