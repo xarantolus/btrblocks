@@ -63,9 +63,7 @@ class TRLE {
     auto& col_struct = *reinterpret_cast<RLEStructure*>(dest);
     // -------------------------------------------------------------------------------------
     std::vector<NumberType> rle_values;
-    rle_values.resize(stats.run_count);
     std::vector<INTEGER> rle_count;
-    rle_count.resize(stats.run_count);
     // -------------------------------------------------------------------------------------
     // RLE encoding
     BTR_IFELSEARM_SVE(
@@ -73,15 +71,18 @@ class TRLE {
           // TODO: Is stats only the sampling, or also for the full compression? if yes, we can't
           // rely on null_count or run_count etc.
           if (nullmap == nullptr || stats.null_count) {
+            rle_values.resize(stats.run_count);
+            rle_count.resize(stats.run_count);
+
             // arm_sve_len is better when there are many smaller runs, otherwise
             // compress_len is better
             if (stats.average_run_length < sve_vector_width<NumberType>()) {
               // Probably better to use the implementation that handles compress better
-              assert(compress_sve(rle_count.data(), rle_values.data(), src, stats.tuple_count) ==
-                     stats.run_count);
+              auto res = compress_sve(rle_count.data(), rle_values.data(), src, stats.tuple_count);
+              assert(res == stats.run_count);
             } else {
-              assert(compress_len(rle_count.data(), rle_values.data(), src, stats.tuple_count) ==
-                     stats.run_count);
+              auto res = compress_len(rle_count.data(), rle_values.data(), src, stats.tuple_count);
+              assert(res == stats.run_count);
             }
           } else {
             NumberType last_item = src[0];
