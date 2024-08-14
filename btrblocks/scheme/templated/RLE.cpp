@@ -20,6 +20,8 @@ size_t compress_len(INTEGER* out_lengths,
 
   INTEGER i = 1;
   if (nullmap) {
+#pragma GCC ivdep
+#pragma clang loop vectorize(assume_safety) vectorize_width(scalable)
     for (; i < N; ++i) {
       data_type c = data[i];
 
@@ -38,6 +40,8 @@ size_t compress_len(INTEGER* out_lengths,
       block_start_pos = i;
     }
   } else {
+#pragma GCC ivdep
+#pragma clang loop vectorize(assume_safety) vectorize_width(scalable)
     for (; i < N; ++i) {
       data_type c = data[i];
 
