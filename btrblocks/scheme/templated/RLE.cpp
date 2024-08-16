@@ -1,4 +1,5 @@
 #include "RLE.hpp"
+#include <arm_sve.h>
 #include "common/SIMD.hpp"
 #include "common/Units.hpp"
 
@@ -86,6 +87,7 @@ template size_t compress_len(INTEGER* out_lengths,
 __attribute__((target("+sve"))) size_t compress_sve(INTEGER* out_lengths,
                                                     INTEGER* out_values,
                                                     const INTEGER* data,
+                                                    const BITMAP* nullmap,
                                                     const INTEGER N) {
   if (N == 0) {
     return 0;
@@ -103,39 +105,83 @@ __attribute__((target("+sve"))) size_t compress_sve(INTEGER* out_lengths,
   INTEGER last_value = out_values[0] = data[0];
   INTEGER last_index = 0;
   svint32_t output_indices;
-  do {
-    assert(i % vl == 0);
-    svint32_t index_reg = svindex_s32(i, 1);
+  // nullmap[i] != 0 if null
+  if (nullmap) {
+    const svint32_t nullmap_comparator = svdup_s32(0);
+    do {
+      assert(i % vl == 0);
+      svint32_t index_reg = svindex_s32(i, 1);
 
-    current = svld1_s32(pred, &data[i]);
-    predecessors = svinsr_n_s32(current, last_value);
+      current = svld1_s32(pred, &data[i]);
+      svint32_t nulls_locs = svld1ub_s32(pred, &nullmap[i]);
 
-    // Find changes
-    svbool_t cmp = svcmpne_s32(pred, current, predecessors);
+      predecessors = svinsr_n_s32(current, last_value);
+      svbool_t nulls = svcmpne_s32(pred, nulls_locs, nullmap_comparator);
 
-    // Move the found changes to the front of the vector
-    svint32_t output_values = svcompact_s32(cmp, current);
-    output_indices = svcompact_s32(cmp, index_reg);
+      // null values are simply ignored, so just add them to pred
+      pred = svand_b_z(pred, pred, nulls);
 
-    // Find lengths
-    svint32_t indices_shifted = svinsr_n_s32(output_indices, last_index);
-    svint32_t lengths = svsub_s32_x(cmp, output_indices, indices_shifted);
+      // Find changes
+      svbool_t cmp = svcmpne_s32(pred, current, predecessors);
 
-    // Now if we e.g. compressed 5 items, we want a predicate with the lowest 5 items active
-    uint32_t result_count = svcntp_b32(cmp, cmp);
-    svbool_t store_pred = svwhilelt_b32(static_cast<uint32_t>(0), result_count);
+      // Move the found changes to the front of the vector
+      svint32_t output_values = svcompact_s32(cmp, current);
+      output_indices = svcompact_s32(cmp, index_reg);
 
-    // We now need to store them in values
-    svst1_s32(store_pred, out_values + result_len, output_values);
-    svst1_s32(store_pred, out_lengths + result_len - 1, lengths);
+      // Find lengths
+      svint32_t indices_shifted = svinsr_n_s32(output_indices, last_index);
+      svint32_t lengths = svsub_s32_x(cmp, output_indices, indices_shifted);
 
-    i += vl;
-    last_value = svlastb_s32(pred, current);
-    last_index = svclastb_n_s32(store_pred, last_index, output_indices);
-    pred = svwhilelt_b32(i, N);
+      // Now if we e.g. compressed 5 items, we want a predicate with the lowest 5 items active
+      uint32_t result_count = svcntp_b32(cmp, cmp);
+      svbool_t store_pred = svwhilelt_b32(static_cast<uint32_t>(0), result_count);
 
-    result_len += result_count;
-  } while (svptest_first(pred, pred));
+      // We now need to store them in values
+      svst1_s32(store_pred, out_values + result_len, output_values);
+      svst1_s32(store_pred, out_lengths + result_len - 1, lengths);
+
+      i += vl;
+      last_value = svlastb_s32(pred, current);
+      last_index = svclastb_n_s32(store_pred, last_index, output_indices);
+      pred = svwhilelt_b32(i, N);
+
+      result_len += result_count;
+    } while (svptest_first(pred, pred));
+  } else {
+    do {
+      assert(i % vl == 0);
+      svint32_t index_reg = svindex_s32(i, 1);
+
+      current = svld1_s32(pred, &data[i]);
+      predecessors = svinsr_n_s32(current, last_value);
+
+      // Find changes
+      svbool_t cmp = svcmpne_s32(pred, current, predecessors);
+
+      // Move the found changes to the front of the vector
+      svint32_t output_values = svcompact_s32(cmp, current);
+      output_indices = svcompact_s32(cmp, index_reg);
+
+      // Find lengths
+      svint32_t indices_shifted = svinsr_n_s32(output_indices, last_index);
+      svint32_t lengths = svsub_s32_x(cmp, output_indices, indices_shifted);
+
+      // Now if we e.g. compressed 5 items, we want a predicate with the lowest 5 items active
+      uint32_t result_count = svcntp_b32(cmp, cmp);
+      svbool_t store_pred = svwhilelt_b32(static_cast<uint32_t>(0), result_count);
+
+      // We now need to store them in values
+      svst1_s32(store_pred, out_values + result_len, output_values);
+      svst1_s32(store_pred, out_lengths + result_len - 1, lengths);
+
+      i += vl;
+      last_value = svlastb_s32(pred, current);
+      last_index = svclastb_n_s32(store_pred, last_index, output_indices);
+      pred = svwhilelt_b32(i, N);
+
+      result_len += result_count;
+    } while (svptest_first(pred, pred));
+  }
 
   out_lengths[result_len - 1] = N - last_index;
 
@@ -145,6 +191,7 @@ __attribute__((target("+sve"))) size_t compress_sve(INTEGER* out_lengths,
 __attribute__((target("+sve"))) size_t compress_sve(INTEGER* out_lengths,
                                                     DOUBLE* out_values,
                                                     const DOUBLE* data,
+                                                    const BITMAP* nullmap,
                                                     const INTEGER N) {
   if (N == 0) {
     return 0;
@@ -162,39 +209,81 @@ __attribute__((target("+sve"))) size_t compress_sve(INTEGER* out_lengths,
   DOUBLE last_value = out_values[0] = data[0];
   int64_t last_index = 0;
   svint64_t output_indices;
-  do {
-    assert(i % vl == 0);
-    svint64_t index_reg = svindex_s64(i, 1);
+  if (nullmap) {
+    // nullmap[i] != 0 if null
+    const svuint64_t nullmap_comparator = svdup_u64(0);
+    do {
+      assert(i % vl == 0);
+      svint64_t index_reg = svindex_s64(i, 1);
 
-    current = svld1_f64(pred, &data[i]);
-    predecessors = svinsr_n_f64(current, last_value);
+      current = svld1_f64(pred, &data[i]);
+      svuint64_t nulls_locs = svld1ub_u64(pred, &nullmap[i]);
 
-    // Find changes
-    svbool_t cmp = svcmpne_f64(pred, current, predecessors);
+      predecessors = svinsr_n_f64(current, last_value);
+      svbool_t nulls = svcmpne_u64(pred, nulls_locs, nullmap_comparator);
+      pred = svand_b_z(pred, pred, nulls);
 
-    // Move the found changes to the front of the vector
-    svfloat64_t output_values = svcompact_f64(cmp, current);
-    output_indices = svcompact_s64(cmp, index_reg);
+      // Find changes
+      svbool_t cmp = svcmpne_f64(pred, current, predecessors);
 
-    // Find lengths
-    svint64_t indices_shifted = svinsr_n_s64(output_indices, last_index);
-    svint64_t lengths = svsub_s64_x(cmp, output_indices, indices_shifted);
+      // Move the found changes to the front of the vector
+      svfloat64_t output_values = svcompact_f64(cmp, current);
+      output_indices = svcompact_s64(cmp, index_reg);
 
-    // Now if we e.g. compressed 5 items, we want a predicate with the lowest 5 items active
-    uint64_t result_count = svcntp_b64(cmp, cmp);
-    svbool_t store_pred = svwhilelt_b64(static_cast<uint64_t>(0), result_count);
+      // Find lengths
+      svint64_t indices_shifted = svinsr_n_s64(output_indices, last_index);
+      svint64_t lengths = svsub_s64_x(cmp, output_indices, indices_shifted);
 
-    // We now need to store them in values
-    svst1_f64(store_pred, out_values + result_len, output_values);
-    svst1w_s64(store_pred, out_lengths + result_len - 1, lengths);
+      // Now if we e.g. compressed 5 items, we want a predicate with the lowest 5 items active
+      uint64_t result_count = svcntp_b64(cmp, cmp);
+      svbool_t store_pred = svwhilelt_b64(static_cast<uint64_t>(0), result_count);
 
-    i += vl;
-    last_value = svlastb_f64(pred, current);
-    last_index = svclastb_n_s64(store_pred, last_index, output_indices);
-    pred = svwhilelt_b64(i, N);
+      // We now need to store them in values
+      svst1_f64(store_pred, out_values + result_len, output_values);
+      svst1w_s64(store_pred, out_lengths + result_len - 1, lengths);
 
-    result_len += result_count;
-  } while (svptest_first(pred, pred));
+      i += vl;
+      last_value = svlastb_f64(pred, current);
+      last_index = svclastb_n_s64(store_pred, last_index, output_indices);
+      pred = svwhilelt_b64(i, N);
+
+      result_len += result_count;
+    } while (svptest_first(pred, pred));
+  } else {
+    do {
+      assert(i % vl == 0);
+      svint64_t index_reg = svindex_s64(i, 1);
+
+      current = svld1_f64(pred, &data[i]);
+      predecessors = svinsr_n_f64(current, last_value);
+
+      // Find changes
+      svbool_t cmp = svcmpne_f64(pred, current, predecessors);
+
+      // Move the found changes to the front of the vector
+      svfloat64_t output_values = svcompact_f64(cmp, current);
+      output_indices = svcompact_s64(cmp, index_reg);
+
+      // Find lengths
+      svint64_t indices_shifted = svinsr_n_s64(output_indices, last_index);
+      svint64_t lengths = svsub_s64_x(cmp, output_indices, indices_shifted);
+
+      // Now if we e.g. compressed 5 items, we want a predicate with the lowest 5 items active
+      uint64_t result_count = svcntp_b64(cmp, cmp);
+      svbool_t store_pred = svwhilelt_b64(static_cast<uint64_t>(0), result_count);
+
+      // We now need to store them in values
+      svst1_f64(store_pred, out_values + result_len, output_values);
+      svst1w_s64(store_pred, out_lengths + result_len - 1, lengths);
+
+      i += vl;
+      last_value = svlastb_f64(pred, current);
+      last_index = svclastb_n_s64(store_pred, last_index, output_indices);
+      pred = svwhilelt_b64(i, N);
+
+      result_len += result_count;
+    } while (svptest_first(pred, pred));
+  }
 
   out_lengths[result_len - 1] = N - last_index;
 
