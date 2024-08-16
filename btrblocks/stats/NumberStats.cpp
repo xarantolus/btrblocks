@@ -1,97 +1,31 @@
-#include "RLE.hpp"
+// -------------------------------------------------------------------------------------
+#include "stats/NumberStats.hpp"
 #include <arm_sve.h>
 #include "common/SIMD.hpp"
 #include "common/Units.hpp"
-
+#include "common/SIMD.hpp"
+#include "common/Units.hpp"
+#include "scheme/templated/RLE.hpp"
+// -------------------------------------------------------------------------------------
+#include <algorithm>
+#include <cmath>
+#include <map>
+#include <random>
+#include <set>
+// -------------------------------------------------------------------------------------
 namespace btrblocks {
-template <typename data_type>
-size_t compress_len(INTEGER* out_lengths,
-                    data_type* out_values,
-                    const data_type* data,
-                    const BITMAP* nullmap,
-                    const INTEGER N) {
-  if (N == 0) {
-    return 0;
-  }
-
-  INTEGER block_start_pos = 0;
-  data_type previous = data[0];
-
-  INTEGER out_len = 0;
-
-  INTEGER i = 1;
-  if (nullmap) {
-#pragma GCC ivdep
-#pragma clang loop vectorize(assume_safety) vectorize_width(scalable)
-    for (; i < N; ++i) {
-      data_type c = data[i];
-
-      if (c == previous || !nullmap[i]) {
-        continue;
-      }
-
-      // We have found an edge
-      INTEGER block_len = i - block_start_pos;
-      assert(block_len > 0);
-      out_lengths[out_len] = block_len;
-      out_values[out_len] = previous;
-      out_len++;
-
-      previous = c;
-      block_start_pos = i;
-    }
-  } else {
-#pragma GCC ivdep
-#pragma clang loop vectorize(assume_safety) vectorize_width(scalable)
-    for (; i < N; ++i) {
-      data_type c = data[i];
-
-      if (c == previous) {
-        continue;
-      }
-
-      // We have found an edge
-      INTEGER block_len = i - block_start_pos;
-      assert(block_len > 0);
-      out_lengths[out_len] = block_len;
-      out_values[out_len] = previous;
-      out_len++;
-
-      previous = c;
-      block_start_pos = i;
-    }
-  }
-
-  INTEGER block_len = N - block_start_pos;
-  assert(block_len > 0);
-
-  out_lengths[out_len] = block_len;
-  out_values[out_len] = previous;
-  out_len++;
-
-  return out_len;
-}
-
-template size_t compress_len(INTEGER* out_lengths,
-                             INTEGER* out_values,
-                             const INTEGER* data,
-                             const BITMAP* nullmap,
-                             const INTEGER N);
-template size_t compress_len(INTEGER* out_lengths,
-                             DOUBLE* out_values,
-                             const DOUBLE* data,
-                             const BITMAP* nullmap,
-                             const INTEGER N);
 
 #if defined(__aarch64__)
-__attribute__((target("+sve"))) size_t compress_sve(INTEGER* out_lengths,
-                                                    INTEGER* out_values,
+__attribute__((target("+sve"))) size_t stats_sve(INTEGER* out_lengths,
+                                                 INTEGER* out_values,
                                                     const INTEGER* data,
                                                     const BITMAP* nullmap,
+                                                    u32* null_count,
                                                     const INTEGER N) {
   if (N == 0) {
     return 0;
   }
+  u32 nullcount = 0;
 
   size_t result_len = 1;
 
@@ -117,6 +51,7 @@ __attribute__((target("+sve"))) size_t compress_sve(INTEGER* out_lengths,
 
       predecessors = svinsr_n_s32(current, last_value);
       svbool_t nulls = svcmpeq_s32(pred, nulls_locs, nullmap_comparator);
+      nullcount += svcntp_b32(pred, nulls);
 
       // null values are simply ignored, so just add them to pred
       pred = svbic_b_z(pred, pred, nulls);
@@ -184,18 +119,21 @@ __attribute__((target("+sve"))) size_t compress_sve(INTEGER* out_lengths,
   }
 
   out_lengths[result_len - 1] = N - last_index;
+  *null_count = nullcount;
 
   return result_len;
 }
 
-__attribute__((target("+sve"))) size_t compress_sve(INTEGER* out_lengths,
-                                                    DOUBLE* out_values,
-                                                    const DOUBLE* data,
-                                                    const BITMAP* nullmap,
-                                                    const INTEGER N) {
+__attribute__((target("+sve"))) size_t stats_sve(INTEGER* out_lengths,
+                                                 DOUBLE* out_values,
+                                                 const DOUBLE* data,
+                                                 const BITMAP* nullmap,
+                                                 u32* null_count,
+                                                 const INTEGER N) {
   if (N == 0) {
     return 0;
   }
+  u32 nullcount = 0;
 
   size_t result_len = 1;
 
@@ -221,6 +159,9 @@ __attribute__((target("+sve"))) size_t compress_sve(INTEGER* out_lengths,
 
       predecessors = svinsr_n_f64(current, last_value);
       svbool_t nulls = svcmpeq_u64(pred, nulls_locs, nullmap_comparator);
+      nullcount += svcntp_b64(pred, nulls);
+
+      // null values are simply ignored, so just add them to pred
       pred = svbic_b_z(pred, pred, nulls);
 
       // Find changes
@@ -286,8 +227,59 @@ __attribute__((target("+sve"))) size_t compress_sve(INTEGER* out_lengths,
   }
 
   out_lengths[result_len - 1] = N - last_index;
+  *null_count = nullcount;
 
   return result_len;
 }
+
+template <typename T>
+NumberStats<T> generateStatsSVE(const T* src, const BITMAP* nullmap, u32 tuple_count) {
+  NumberStats stats(src, nullmap, tuple_count);
+  stats.tuple_count = tuple_count;
+  stats.total_size = tuple_count * sizeof(T);
+  stats.null_count = 0;
+  stats.average_run_length = 0;
+  stats.is_sorted = std::is_sorted(src, src + tuple_count);
+
+  std::vector<T> out_values(tuple_count);
+  std::vector<INTEGER> out_lengths(tuple_count);
+
+  stats.run_count = stats_sve(out_lengths.data(), out_values.data(), src, nullmap, &stats.null_count, tuple_count);
+
+  T last_value;
+  if (tuple_count > 0) {
+      stats.min = stats.max = last_value = out_values[0];
+  }
+
+  for (u64 row_i = 0; row_i < stats.run_count; row_i++) {
+    auto current_value = out_values[row_i];
+      if (stats.is_sorted && current_value < last_value) {
+        stats.is_sorted = false;
+      }
+    if (stats.distinct_values.find(current_value) == stats.distinct_values.end()) {
+      stats.distinct_values.insert({current_value, out_lengths[row_i]});
+    } else {
+      stats.distinct_values[current_value] += out_lengths[row_i];
+    }
+    if (current_value > stats.max) {
+      stats.max = current_value;
+    } else if (current_value < stats.min) {
+      stats.min = current_value;
+    }
+    last_value = current_value;
+  }
+
+  stats.average_run_length = CD(tuple_count) / CD(stats.run_count);
+  stats.unique_count = stats.distinct_values.size();
+  stats.set_count = stats.tuple_count - stats.null_count;
+
+  return stats;
+}
+
+template NumberStats<INTEGER> generateStatsSVE(const INTEGER* src, const BITMAP* nullmap, u32 tuple_count);
+template NumberStats<DOUBLE> generateStatsSVE(const DOUBLE* src, const BITMAP* nullmap, u32 tuple_count);
 #endif
+
+// -------------------------------------------------------------------------------------
 }  // namespace btrblocks
+// -------------------------------------------------------------------------------------

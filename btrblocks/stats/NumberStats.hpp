@@ -9,6 +9,14 @@
 #include <set>
 // -------------------------------------------------------------------------------------
 namespace btrblocks {
+template <typename T>
+struct NumberStats;
+
+#if defined(__aarch64__)
+template <typename T>
+NumberStats<T> generateStatsSVE(const T* src, const BITMAP* nullmap, u32 tuple_count);
+#endif
+
 // -------------------------------------------------------------------------------------
 template <typename T>
 struct NumberStats {
@@ -77,6 +85,11 @@ struct NumberStats {
   }
   // -------------------------------------------------------------------------------------
   static NumberStats generateStats(const T* src, const BITMAP* nullmap, u32 tuple_count) {
+    NumberStats ssve(src, nullmap, tuple_count);
+    BTR_IFELSEARM_SVE({
+       ssve = generateStatsSVE(src, nullmap, tuple_count);
+    }, {});
+
     NumberStats stats(src, nullmap, tuple_count);
     // -------------------------------------------------------------------------------------
     stats.tuple_count = tuple_count;
@@ -127,10 +140,26 @@ struct NumberStats {
     stats.unique_count = stats.distinct_values.size();
     stats.set_count = stats.tuple_count - stats.null_count;
     stats.run_count = run_count;
+
+    die_if((ssve.src == stats.src));
+    die_if((ssve.bitmap == stats.bitmap));
+    die_if((ssve.distinct_values == stats.distinct_values));
+    die_if((ssve.min == stats.min));
+    die_if((ssve.max == stats.max));
+    die_if((ssve.tuple_count == stats.tuple_count));
+    die_if((ssve.total_size == stats.total_size));
+    die_if((ssve.null_count == stats.null_count));
+    die_if((ssve.unique_count == stats.unique_count));
+    die_if((ssve.set_count == stats.set_count));
+    die_if((ssve.average_run_length == stats.average_run_length));
+    die_if((ssve.run_count == stats.run_count));
+    die_if((ssve.is_sorted == stats.is_sorted));
+
     // -------------------------------------------------------------------------------------
-    return stats;
+    return ssve;
   }
 };
 // -------------------------------------------------------------------------------------
 }  // namespace btrblocks
 // -------------------------------------------------------------------------------------
+
