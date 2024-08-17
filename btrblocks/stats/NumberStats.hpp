@@ -2,11 +2,9 @@
 // -------------------------------------------------------------------------------------
 #include "common/Units.hpp"
 // -------------------------------------------------------------------------------------
-#include <algorithm>
 #include <cmath>
 #include <map>
 #include <random>
-#include <set>
 // -------------------------------------------------------------------------------------
 namespace btrblocks {
 template <typename T>
@@ -102,6 +100,7 @@ struct NumberStats {
     }
     u32 run_count = 0;
     u64 run_start_idx = 0;
+    u64 nulls_in_run = 0;
     T current_value;
         // -------------------------------------------------------------------------------------
     if (nullmap) {
@@ -114,15 +113,16 @@ struct NumberStats {
               stats.is_sorted = false;
             }
             last_value = current_value;
-
             run_count++;
-            auto run_len = row_i - run_start_idx;
-            assert(run_len > 0);
-            stats.distinct_values[current_value] += run_len;
+            auto len = (row_i - run_start_idx);
+            stats.null_count += nulls_in_run;
+            assert(len > 0);
+            stats.distinct_values[current_value] += len;
             run_start_idx = row_i;
+            nulls_in_run = 0;
           }
         } else {
-          stats.null_count++;
+          nulls_in_run++;
         }
       }
     }
@@ -136,9 +136,9 @@ struct NumberStats {
           }
           last_value = current_value;
           run_count++;
-          auto run_len = row_i - run_start_idx;
-          assert(run_len > 0);
-          stats.distinct_values[current_value] += run_len;
+          auto len = (row_i - run_start_idx);
+          assert(len > 0);
+          stats.distinct_values[current_value] += len;
           run_start_idx = row_i;
         }
       }
@@ -147,10 +147,12 @@ struct NumberStats {
 
     // -------------------------------------------------------------------------------------
     if (tuple_count > 0) {
-      auto run_len = tuple_count - run_start_idx;
+      assert(tuple_count - run_start_idx > nulls_in_run);
+      auto run_len = (tuple_count - run_start_idx);
       if (run_len > 0) {
         stats.distinct_values[current_value] += run_len;
       }
+      stats.null_count += nulls_in_run;
 
       // Since maps are sorted, we can easily access min/max
       stats.min = stats.distinct_values.begin()->first;
