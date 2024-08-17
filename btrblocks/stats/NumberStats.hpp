@@ -107,49 +107,48 @@ struct NumberStats {
       for (u64 row_i = 0; row_i < tuple_count; row_i++) {
         // -------------------------------------------------------------------------------------
         current_value = src[row_i];
-        if (nullmap[row_i]) {
-          if (current_value != last_value) {
+        if (current_value != last_value) {
+          if (nullmap[row_i]) {
             if (current_value < last_value) {
               stats.is_sorted = false;
             }
-            last_value = current_value;
             run_count++;
             auto len = (row_i - run_start_idx);
             stats.null_count += nulls_in_run;
             assert(len > 0);
-            auto it = stats.distinct_values.find(current_value);
+            auto it = stats.distinct_values.find(last_value);
             if (it != stats.distinct_values.end()) {
               it->second += len;
             } else {
-              stats.distinct_values.insert({current_value, len});
+              stats.distinct_values.insert({last_value, len});
             }
             run_start_idx = row_i;
             nulls_in_run = 0;
+            last_value = current_value;
+          } else {
+            nulls_in_run++;
           }
-        } else {
-          nulls_in_run++;
         }
       }
     }
     else {
       for (u64 row_i = 0; row_i < tuple_count; row_i++) {
-        // -------------------------------------------------------------------------------------
-        auto current_value = src[row_i];
+        current_value = src[row_i];
         if (current_value != last_value) {
           if (current_value < last_value) {
             stats.is_sorted = false;
           }
-          last_value = current_value;
           run_count++;
           auto len = (row_i - run_start_idx);
           assert(len > 0);
-          auto it = stats.distinct_values.find(current_value);
+          auto it = stats.distinct_values.find(last_value);
           if (it != stats.distinct_values.end()) {
             it->second += len;
           } else {
-            stats.distinct_values.insert({current_value, len});
+            stats.distinct_values.insert({last_value, len});
           }
           run_start_idx = row_i;
+          last_value = current_value;
         }
       }
     }
@@ -157,7 +156,6 @@ struct NumberStats {
 
     // -------------------------------------------------------------------------------------
     if (tuple_count > 0) {
-      assert(tuple_count - run_start_idx > nulls_in_run);
       auto run_len = (tuple_count - run_start_idx);
       if (run_len > 0) {
         auto it = stats.distinct_values.find(current_value);
