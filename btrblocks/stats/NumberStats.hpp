@@ -101,41 +101,57 @@ struct NumberStats {
       stats.min = stats.max = last_value = src[0];
     }
     u32 run_count = 0;
-    // -------------------------------------------------------------------------------------
+    u64 run_start_idx = 0;
+    T current_value;
+        // -------------------------------------------------------------------------------------
     if (nullmap) {
       for (u64 row_i = 0; row_i < tuple_count; row_i++) {
         // -------------------------------------------------------------------------------------
-        auto current_value = src[row_i];
-        stats.distinct_values[current_value]++;
+        current_value = src[row_i];
         if (nullmap[row_i]) {
           if (current_value != last_value) {
             if (current_value < last_value) {
               stats.is_sorted = false;
             }
             last_value = current_value;
+
             run_count++;
+            auto run_len = row_i - run_start_idx;
+            assert(run_len > 0);
+            stats.distinct_values[current_value] += run_len;
+            run_start_idx = row_i;
           }
         } else {
           stats.null_count++;
         }
       }
-    } else {
+    }
+    else {
       for (u64 row_i = 0; row_i < tuple_count; row_i++) {
         // -------------------------------------------------------------------------------------
         auto current_value = src[row_i];
-        stats.distinct_values[current_value]++;
         if (current_value != last_value) {
           if (current_value < last_value) {
             stats.is_sorted = false;
           }
           last_value = current_value;
           run_count++;
+          auto run_len = row_i - run_start_idx;
+          assert(run_len > 0);
+          stats.distinct_values[current_value] += run_len;
+          run_start_idx = row_i;
         }
       }
     }
-    run_count++;
+
     // -------------------------------------------------------------------------------------
     if (tuple_count > 0) {
+      run_count++;
+      auto run_len = tuple_count - run_start_idx;
+      if (run_len > 0) {
+        stats.distinct_values[current_value] += run_len;
+      }
+
       // Since maps are sorted, we can easily access min/max
       stats.min = stats.distinct_values.begin()->first;
       stats.max = stats.distinct_values.rbegin()->first;
