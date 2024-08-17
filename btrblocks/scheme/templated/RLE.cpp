@@ -1,5 +1,4 @@
 #include "RLE.hpp"
-#include <arm_sve.h>
 #include "common/SIMD.hpp"
 #include "common/Units.hpp"
 
