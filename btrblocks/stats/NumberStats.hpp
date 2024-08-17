@@ -143,10 +143,10 @@ struct NumberStats {
         }
       }
     }
+    run_count++;
 
     // -------------------------------------------------------------------------------------
     if (tuple_count > 0) {
-      run_count++;
       auto run_len = tuple_count - run_start_idx;
       if (run_len > 0) {
         stats.distinct_values[current_value] += run_len;
