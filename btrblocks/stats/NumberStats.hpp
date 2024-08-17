@@ -85,11 +85,6 @@ struct NumberStats {
   }
   // -------------------------------------------------------------------------------------
   static NumberStats generateStats(const T* src, const BITMAP* nullmap, u32 tuple_count) {
-    NumberStats ssve(src, nullmap, tuple_count);
-    BTR_IFELSEARM_SVE({
-       ssve = generateStatsSVE(src, nullmap, tuple_count);
-    }, {});
-
     NumberStats stats(src, nullmap, tuple_count);
     // -------------------------------------------------------------------------------------
     stats.tuple_count = tuple_count;
@@ -98,68 +93,61 @@ struct NumberStats {
     stats.average_run_length = 0;
     stats.is_sorted = true;
     // -------------------------------------------------------------------------------------
-    bool is_init_value_initialized = false;
     // -------------------------------------------------------------------------------------
     // Let NULL_CODE (0) of null values also taken into stats consideration
     // -------------------------------------------------------------------------------------
     T last_value;
+    if (tuple_count > 0) {
+      stats.min = stats.max = last_value = src[0];
+    }
     u32 run_count = 0;
     // -------------------------------------------------------------------------------------
-    for (u64 row_i = 0; row_i < tuple_count; row_i++) {
-      if (!is_init_value_initialized) {
-        stats.min = stats.max = last_value = src[0];
-        is_init_value_initialized = true;
-      }
-      // -------------------------------------------------------------------------------------
-      auto current_value = src[row_i];
-      if (current_value != last_value && (nullmap == nullptr || nullmap[row_i])) {
-        if (current_value < last_value) {
-          stats.is_sorted = false;
-        }
-        last_value = current_value;
-        run_count++;
-      }
-      if (stats.distinct_values.find(current_value) == stats.distinct_values.end()) {
-        stats.distinct_values.insert({current_value, 1});
-      } else {
+    if (nullmap) {
+      for (u64 row_i = 0; row_i < tuple_count; row_i++) {
+        // -------------------------------------------------------------------------------------
+        auto current_value = src[row_i];
         stats.distinct_values[current_value]++;
+        if (nullmap[row_i]) {
+          if (current_value != last_value) {
+            if (current_value < last_value) {
+              stats.is_sorted = false;
+            }
+            last_value = current_value;
+            run_count++;
+          }
+        } else {
+          stats.null_count++;
+        }
       }
-      if (current_value > stats.max) {
-        stats.max = current_value;
-      } else if (current_value < stats.min) {
-        stats.min = current_value;
-      }
-      if (nullmap != nullptr && !nullmap[row_i]) {
-        stats.null_count++;
-        continue;
+    } else {
+      for (u64 row_i = 0; row_i < tuple_count; row_i++) {
+        // -------------------------------------------------------------------------------------
+        auto current_value = src[row_i];
+        stats.distinct_values[current_value]++;
+        if (current_value != last_value) {
+          if (current_value < last_value) {
+            stats.is_sorted = false;
+          }
+          last_value = current_value;
+          run_count++;
+        }
       }
     }
     run_count++;
     // -------------------------------------------------------------------------------------
+    if (tuple_count > 0) {
+      // Since maps are sorted, we can easily access min/max
+      stats.min = stats.distinct_values.begin()->first;
+      stats.max = stats.distinct_values.rbegin()->first;
+    }
     stats.average_run_length = CD(tuple_count) / CD(run_count);
     stats.unique_count = stats.distinct_values.size();
     stats.set_count = stats.tuple_count - stats.null_count;
     stats.run_count = run_count;
 
-    die_if((ssve.src == stats.src));
-    die_if((ssve.bitmap == stats.bitmap));
-    die_if((ssve.distinct_values == stats.distinct_values));
-    die_if((ssve.min == stats.min));
-    die_if((ssve.max == stats.max));
-    die_if((ssve.tuple_count == stats.tuple_count));
-    die_if((ssve.total_size == stats.total_size));
-    die_if((ssve.null_count == stats.null_count));
-    die_if((ssve.unique_count == stats.unique_count));
-    die_if((ssve.set_count == stats.set_count));
-    die_if((ssve.average_run_length == stats.average_run_length));
-    die_if((ssve.run_count == stats.run_count));
-    die_if((ssve.is_sorted == stats.is_sorted));
-
-    // -------------------------------------------------------------------------------------
-    return ssve;
+    return stats;
   }
 };
 // -------------------------------------------------------------------------------------
 }  // namespace btrblocks
 // -------------------------------------------------------------------------------------
-
