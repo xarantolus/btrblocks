@@ -1,6 +1,5 @@
 // -------------------------------------------------------------------------------------
 #include "stats/NumberStats.hpp"
-#include <arm_sve.h>
 #include "common/SIMD.hpp"
 #include "common/Units.hpp"
 #include "common/SIMD.hpp"
@@ -256,11 +255,12 @@ NumberStats<T> generateStatsSVE(const T* src, const BITMAP* nullmap, u32 tuple_c
       if (stats.is_sorted && current_value < last_value) {
         stats.is_sorted = false;
       }
-    if (stats.distinct_values.find(current_value) == stats.distinct_values.end()) {
-      stats.distinct_values.insert({current_value, out_lengths[row_i]});
-    } else {
-      stats.distinct_values[current_value] += out_lengths[row_i];
-    }
+      auto it = stats.distinct_values.find(current_value);
+      if (it != stats.distinct_values.end()) {
+        it->second += out_lengths[row_i];
+      } else {
+        stats.distinct_values.insert({current_value, out_lengths[row_i]});
+      }
     if (current_value > stats.max) {
       stats.max = current_value;
     } else if (current_value < stats.min) {

@@ -117,7 +117,12 @@ struct NumberStats {
             auto len = (row_i - run_start_idx);
             stats.null_count += nulls_in_run;
             assert(len > 0);
-            stats.distinct_values[current_value] += len;
+            auto it = stats.distinct_values.find(current_value);
+            if (it != stats.distinct_values.end()) {
+              it->second += len;
+            } else {
+              stats.distinct_values.insert({current_value, len});
+            }
             run_start_idx = row_i;
             nulls_in_run = 0;
           }
@@ -138,7 +143,12 @@ struct NumberStats {
           run_count++;
           auto len = (row_i - run_start_idx);
           assert(len > 0);
-          stats.distinct_values[current_value] += len;
+          auto it = stats.distinct_values.find(current_value);
+          if (it != stats.distinct_values.end()) {
+            it->second += len;
+          } else {
+            stats.distinct_values.insert({current_value, len});
+          }
           run_start_idx = row_i;
         }
       }
@@ -150,7 +160,12 @@ struct NumberStats {
       assert(tuple_count - run_start_idx > nulls_in_run);
       auto run_len = (tuple_count - run_start_idx);
       if (run_len > 0) {
-        stats.distinct_values[current_value] += run_len;
+        auto it = stats.distinct_values.find(current_value);
+        if (it != stats.distinct_values.end()) {
+            it->second += run_len;
+        } else {
+            stats.distinct_values.insert({current_value, run_len});
+        }
       }
       stats.null_count += nulls_in_run;
 
