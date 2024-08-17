@@ -101,8 +101,10 @@ u32 DynamicDictionary::compress(const btrblocks::StringArrayViewer src,
                       input_string_buffers.get(), output_buffer_size, write_ptr,
                       (unsigned long*)output_string_lengths.get(),
                       output_string_buffers.get()) != fsst_n) {
+      fsst_destroy(encoder);
       throw Generic_Exception("FSST Compression failed !");
     }
+    fsst_destroy(encoder);
     fsst_strings_used_space = output_string_lengths[fsst_n - 1] +
                               (output_string_buffers[fsst_n - 1] - output_string_buffers[0]);
     // -------------------------------------------------------------------------------------
