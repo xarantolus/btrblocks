@@ -29,6 +29,7 @@ struct NumberStats {
   u32 unique_count;
   u32 set_count;
   u32 average_run_length;
+  u32 run_count;
   bool is_sorted;
   // -------------------------------------------------------------------------------------
   tuple<vector<T>, vector<BITMAP>> samples(u32 n, u32 length) {
@@ -84,48 +85,73 @@ struct NumberStats {
     stats.average_run_length = 0;
     stats.is_sorted = true;
     // -------------------------------------------------------------------------------------
-    bool is_init_value_initialized = false;
     // -------------------------------------------------------------------------------------
     // Let NULL_CODE (0) of null values also taken into stats consideration
     // -------------------------------------------------------------------------------------
     T last_value;
+    if (tuple_count > 0) {
+      stats.min = stats.max = last_value = src[0];
+    }
     u32 run_count = 0;
+    u64 run_start_idx = 0;
+    T current_value;
     // -------------------------------------------------------------------------------------
-    for (u64 row_i = 0; row_i < tuple_count; row_i++) {
-      if (!is_init_value_initialized) {
-        stats.min = stats.max = last_value = src[0];
-        is_init_value_initialized = true;
-      }
-      // -------------------------------------------------------------------------------------
-      auto current_value = src[row_i];
-      if (current_value != last_value && (nullmap == nullptr || nullmap[row_i])) {
-        if (current_value < last_value) {
-          stats.is_sorted = false;
+    if (nullmap) {
+      for (u64 row_i = 0; row_i < tuple_count; row_i++) {
+        // -------------------------------------------------------------------------------------
+        current_value = src[row_i];
+        if (nullmap[row_i]) {
+          if (current_value != last_value) {
+            if (current_value < last_value) {
+              stats.is_sorted = false;
+            }
+            last_value = current_value;
+
+            run_count++;
+            auto run_len = row_i - run_start_idx;
+            assert(run_len > 0);
+            stats.distinct_values[current_value] += run_len;
+            run_start_idx = row_i;
+          }
+        } else {
+          stats.null_count++;
         }
-        last_value = current_value;
-        run_count++;
       }
-      if (stats.distinct_values.find(current_value) == stats.distinct_values.end()) {
-        stats.distinct_values.insert({current_value, 1});
-      } else {
-        stats.distinct_values[current_value]++;
-      }
-      if (current_value > stats.max) {
-        stats.max = current_value;
-      } else if (current_value < stats.min) {
-        stats.min = current_value;
-      }
-      if (nullmap != nullptr && !nullmap[row_i]) {
-        stats.null_count++;
-        continue;
+    } else {
+      for (u64 row_i = 0; row_i < tuple_count; row_i++) {
+        // -------------------------------------------------------------------------------------
+        auto current_value = src[row_i];
+        if (current_value != last_value) {
+          if (current_value < last_value) {
+            stats.is_sorted = false;
+          }
+          last_value = current_value;
+          run_count++;
+          auto run_len = row_i - run_start_idx;
+          assert(run_len > 0);
+          stats.distinct_values[current_value] += run_len;
+          run_start_idx = row_i;
+        }
       }
     }
     run_count++;
+
     // -------------------------------------------------------------------------------------
+    if (tuple_count > 0) {
+      auto run_len = tuple_count - run_start_idx;
+      if (run_len > 0) {
+        stats.distinct_values[current_value] += run_len;
+      }
+
+      // Since maps are sorted, we can easily access min/max
+      stats.min = stats.distinct_values.begin()->first;
+      stats.max = stats.distinct_values.rbegin()->first;
+    }
     stats.average_run_length = CD(tuple_count) / CD(run_count);
     stats.unique_count = stats.distinct_values.size();
     stats.set_count = stats.tuple_count - stats.null_count;
-    // -------------------------------------------------------------------------------------
+    stats.run_count = run_count;
+
     return stats;
   }
 };
