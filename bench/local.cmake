@@ -14,6 +14,12 @@ target_link_libraries(benchmarks btrblocks gbenchmark gtest gmock Threads::Threa
 target_include_directories(benchmarks PRIVATE ${BTR_INCLUDE_DIR})
 target_include_directories(benchmarks PRIVATE ${BTR_BENCH_DIR})
 
+# Decompression only benchmarks
+add_executable(decompression_bench ${BTR_BENCH_DIR}/decompression_bench.cpp)
+target_link_libraries(decompression_bench btrblocks gbenchmark gtest gmock Threads::Threads)
+target_include_directories(decompression_bench PRIVATE ${BTR_INCLUDE_DIR})
+target_include_directories(decompression_bench PRIVATE ${BTR_BENCH_DIR})
+
 enable_testing()
 
 # ---------------------------------------------------------------------------
