@@ -1,6 +1,6 @@
 #!/usr/bin/sh
 
-# This script prepares an EC2 instance with Amazon Linux 2 for compiling Btrblocks
+# This script prepares an EC2 instance with Amazon Linux 2023 for compiling Btrblocks
 #
 # Add $HOME/bin to your path in addition to this script
 
@@ -8,7 +8,7 @@ set -eu
 
 # Dependencies
 sudo yum -y groupinstall "Development Tools"
-sudo yum -y install openssl-devel libcurl-devel bzip2-devel postgresql-devel gcc10-c++ libasan10 tmux git htop tree perf boost-devel
+sudo yum -y install openssl-devel libcurl-devel bzip2-devel postgresql-devel tmux git htop tree perf boost-devel tbb tbb-devel zlib-devel wget gnupg
 
 pip3 install pandas pyarrow pyspark pyyaml
 
@@ -23,7 +23,7 @@ ln -sf /usr/bin/gcc10-cpp cpp
 popd # $HOME/bin
 
 version='3.23.1'
-threads=32
+threads=2
 
 rm -rf "cmake-${version}"
 wget "https://github.com/Kitware/CMake/releases/download/v${version}/cmake-${version}.tar.gz"
