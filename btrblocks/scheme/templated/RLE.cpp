@@ -1,5 +1,6 @@
-#include "RLE.hpp"
 #if defined(__aarch64__)
+#include "RLE.hpp"
+
 namespace btrblocks {
 template <typename number_type>
 size_t rle_decompress_len(const int *in_lengths, const number_type *in_values, const size_t N, number_type *data) {
