@@ -1,4 +1,6 @@
 #pragma once
+#include "common/SIMD.hpp"
+#include "common/Units.hpp"
 #include "compression/SchemePicker.hpp"
 #include "scheme/CompressionScheme.hpp"
 // -------------------------------------------------------------------------------------
@@ -129,6 +131,11 @@ class TRLE {
   // -------------------------------------------------------------------------------------
 };
 
+#if defined(__aarch64__)
+template <typename number_type>
+size_t rle_decompress_len(const int *in_lengths, const number_type *in_values, const size_t N, number_type *data);
+#endif
+
 template <>
 inline void TRLE<INTEGER, IntegerScheme, SInteger32Stats, IntegerSchemeType>::decompressColumn(
     INTEGER* dest,
@@ -163,24 +170,29 @@ inline void TRLE<INTEGER, IntegerScheme, SInteger32Stats, IntegerSchemeType>::de
   // -------------------------------------------------------------------------------------
   auto write_ptr = dest;
 #ifdef BTR_USE_SIMD
-  for (u32 run_i = 0; run_i < col_struct.runs_count; run_i++) {
-    auto target_ptr = write_ptr + counts[run_i];
+  BTR_IFELSEARM_SVE(
+      { (rle_decompress_len<INTEGER>(counts, values, col_struct.runs_count, write_ptr)); },
+      {
+        // On non-SVE ARM machines, this generates NEON code
+        for (u32 run_i = 0; run_i < col_struct.runs_count; run_i++) {
+          auto target_ptr = write_ptr + counts[run_i];
 
-    /*
-     * I tried several variation for vectorizing this. Using AVX2 directly is
-     * the fastest even when there are many very short runs. The penalty of
-     * branching simply outweighs the few instructions saved by not using AVX2
-     * for short runs
-     */
-    // set is a sequential operation
-    __m256i vec = _mm256_set1_epi32(values[run_i]);
-    while (write_ptr < target_ptr) {
-      // store is performed in a single cycle
-      _mm256_storeu_si256(reinterpret_cast<__m256i*>(write_ptr), vec);
-      write_ptr += 8;
-    }
-    write_ptr = target_ptr;
-  }
+          /*
+           * I tried several variation for vectorizing this. Using AVX2 directly is
+           * the fastest even when there are many very short runs. The penalty of
+           * branching simply outweighs the few instructions saved by not using AVX2
+           * for short runs
+           */
+          // set is a sequential operation
+          __m256i vec = _mm256_set1_epi32(values[run_i]);
+          while (write_ptr < target_ptr) {
+            // store is performed in a single cycle
+            _mm256_storeu_si256(reinterpret_cast<__m256i*>(write_ptr), vec);
+            write_ptr += 8;
+          }
+          write_ptr = target_ptr;
+        }
+      });
 #else
   for (u32 run_i = 0; run_i < col_struct.runs_count; run_i++) {
     auto val = values[run_i];
@@ -226,18 +238,22 @@ inline void TRLE<DOUBLE, DoubleScheme, DoubleStats, DoubleSchemeType>::decompres
   // -------------------------------------------------------------------------------------
   auto write_ptr = dest;
 #ifdef BTR_USE_SIMD
-  for (u32 run_i = 0; run_i < col_struct.runs_count; run_i++) {
-    auto target_ptr = write_ptr + counts[run_i];
+  BTR_IFELSEARM_SVE(
+      { (rle_decompress_len<DOUBLE>(counts, values, col_struct.runs_count, write_ptr)); },
+      {
+        for (u32 run_i = 0; run_i < col_struct.runs_count; run_i++) {
+          auto target_ptr = write_ptr + counts[run_i];
 
-    // set is a sequential operation
-    __m256d vec = _mm256_set1_pd(values[run_i]);
-    while (write_ptr < target_ptr) {
-      // store is performed in a single cycle
-      _mm256_storeu_pd(write_ptr, vec);
-      write_ptr += 4;
-    }
-    write_ptr = target_ptr;
-  }
+          // set is a sequential operation
+          __m256d vec = _mm256_set1_pd(values[run_i]);
+          while (write_ptr < target_ptr) {
+            // store is performed in a single cycle
+            _mm256_storeu_pd(write_ptr, vec);
+            write_ptr += 4;
+          }
+          write_ptr = target_ptr;
+        }
+      });
 #else
   for (u32 run_i = 0; run_i < col_struct.runs_count; run_i++) {
     auto val = values[run_i];

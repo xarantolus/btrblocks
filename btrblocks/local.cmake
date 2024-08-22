@@ -44,7 +44,7 @@ endif()
 # ---------------------------------------------------------------------------
 
 file(GLOB_RECURSE BTR_HH btrblocks/**.hpp  btrblocks/**.h)
-file(GLOB_RECURSE BTR_CC btrblocks/**/**.cpp btrblocks/**.cpp  btrblocks/**.c)
+file(GLOB_RECURSE BTR_CC btrblocks/**/**/**.cpp btrblocks/**/**.cpp btrblocks/**.cpp  btrblocks/**.c)
 set(BTR_SRC ${BTR_HH} ${BTR_CC})
 
 # Gather lintable files
