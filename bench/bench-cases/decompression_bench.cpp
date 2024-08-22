@@ -15,7 +15,7 @@ namespace btrbench {
 static const std::vector<std::string> integer_datasets{
     "10_Semana.integer",         "12_Venta_uni_hoy.integer", "1_Agencia_ID.integer",
     "2_Canal_ID.integer",        "3_Cliente_ID.integer",     "4_Demanda_uni_equil.integer",
-    "6_Dev_uni_proxima.integer", "8_Producto_ID.integer",    "9_Ruta_SAK.integer"};
+    "6_Dev_uni_proxima.integer", "9_Ruta_SAK.integer"};
 
 static const vector<vector<IntegerSchemeType> > benchmarkedIntegerSchemes{
     {IntegerSchemeType::DICT},
@@ -60,9 +60,11 @@ void RegisterSingleBenchmarks() {
   //
   // Integer schemes
   //
+
   for (auto dataset : integer_datasets) {
     // Run for all individually
     for (auto& schemes : benchmarkedIntegerSchemes) {
+      SetupSchemesAndDepth(schemes);
       auto name = "INTEGER_" + ConvertSchemeTypeToString(schemes[0]) + "/" + dataset;
 
       Relation relation;
