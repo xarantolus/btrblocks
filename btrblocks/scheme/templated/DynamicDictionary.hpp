@@ -106,23 +106,6 @@ class TDynamicDictionary {
 };
 
 #if defined(__aarch64__)
-template <typename number_type>
-inline size_t rle_decompress_len(const u32 *in_lengths, const number_type *in_values, const size_t N, number_type *data) {
-    size_t total_len = 0;
-    for (size_t i = 0; i < N; i++) {
-        size_t len = in_lengths[i];
-        number_type val = in_values[i];
-
-        for (size_t j = 0; j < len; j++) {
-            data[total_len + j] = val;
-        }
-
-        total_len += len;
-    }
-
-    return total_len;
-}
-
 template <typename number_type, typename code_type>
 inline void decompress_dict(const code_type *codes, const number_type *dictionary, number_type *out_data, size_t N) {
     for (size_t i = 0; i < N; i++) {
