@@ -1,4 +1,5 @@
 #pragma once
+#include "common/SIMD.hpp"
 #include "common/Utils.hpp"
 #include "compression/SchemePicker.hpp"
 #include "scheme/CompressionScheme.hpp"
@@ -104,6 +105,32 @@ class TDynamicDictionary {
   }
 };
 
+#if defined(__aarch64__)
+template <typename number_type>
+inline size_t rle_decompress_len(const u32 *in_lengths, const number_type *in_values, const size_t N, number_type *data) {
+    size_t total_len = 0;
+    for (size_t i = 0; i < N; i++) {
+        size_t len = in_lengths[i];
+        number_type val = in_values[i];
+
+        for (size_t j = 0; j < len; j++) {
+            data[total_len + j] = val;
+        }
+
+        total_len += len;
+    }
+
+    return total_len;
+}
+
+template <typename number_type, typename code_type>
+inline void decompress_dict(const code_type *codes, const number_type *dictionary, number_type *out_data, size_t N) {
+    for (size_t i = 0; i < N; i++) {
+        out_data[i] = dictionary[codes[i]];
+    }
+}
+#endif
+
 template <>
 inline void TDynamicDictionary<INTEGER, IntegerScheme, SInteger32Stats, IntegerSchemeType>::
     decompressColumn(INTEGER* dest, BitmapWrapper*, const u8* src, u32 tuple_count, u32 level) {
@@ -125,37 +152,45 @@ inline void TDynamicDictionary<INTEGER, IntegerScheme, SInteger32Stats, IntegerS
   auto dict = reinterpret_cast<const INTEGER*>(col_struct.data);
   u32 i = 0;
 #ifdef BTR_USE_SIMD
-  if (tuple_count >= 32) {
-    while (i < tuple_count - 31) {
-      // Load codes.
-      __m256i codes_0 = _mm256_loadu_si256(reinterpret_cast<__m256i*>(codes + 0));
-      __m256i codes_1 = _mm256_loadu_si256(reinterpret_cast<__m256i*>(codes + 8));
-      __m256i codes_2 = _mm256_loadu_si256(reinterpret_cast<__m256i*>(codes + 16));
-      __m256i codes_3 = _mm256_loadu_si256(reinterpret_cast<__m256i*>(codes + 24));
+  BTR_IFELSEARM_SVE(
+      { decompress_dict(codes, dict, dest, tuple_count); },
+      {
+        if (tuple_count >= 32) {
+          while (i < tuple_count - 31) {
+            // Load codes.
+            __m256i codes_0 = _mm256_loadu_si256(reinterpret_cast<__m256i*>(codes + 0));
+            __m256i codes_1 = _mm256_loadu_si256(reinterpret_cast<__m256i*>(codes + 8));
+            __m256i codes_2 = _mm256_loadu_si256(reinterpret_cast<__m256i*>(codes + 16));
+            __m256i codes_3 = _mm256_loadu_si256(reinterpret_cast<__m256i*>(codes + 24));
 
-      // Gather values.
-      __m256i values_0 = _mm256_i32gather_epi32(dict, codes_0, 4);
-      __m256i values_1 = _mm256_i32gather_epi32(dict, codes_1, 4);
-      __m256i values_2 = _mm256_i32gather_epi32(dict, codes_2, 4);
-      __m256i values_3 = _mm256_i32gather_epi32(dict, codes_3, 4);
+            // Gather values.
+            __m256i values_0 = _mm256_i32gather_epi32(dict, codes_0, 4);
+            __m256i values_1 = _mm256_i32gather_epi32(dict, codes_1, 4);
+            __m256i values_2 = _mm256_i32gather_epi32(dict, codes_2, 4);
+            __m256i values_3 = _mm256_i32gather_epi32(dict, codes_3, 4);
 
-      // store values
-      _mm256_storeu_si256(reinterpret_cast<__m256i*>(dest + 0), values_0);
-      _mm256_storeu_si256(reinterpret_cast<__m256i*>(dest + 8), values_1);
-      _mm256_storeu_si256(reinterpret_cast<__m256i*>(dest + 16), values_2);
-      _mm256_storeu_si256(reinterpret_cast<__m256i*>(dest + 24), values_3);
+            // store values
+            _mm256_storeu_si256(reinterpret_cast<__m256i*>(dest + 0), values_0);
+            _mm256_storeu_si256(reinterpret_cast<__m256i*>(dest + 8), values_1);
+            _mm256_storeu_si256(reinterpret_cast<__m256i*>(dest + 16), values_2);
+            _mm256_storeu_si256(reinterpret_cast<__m256i*>(dest + 24), values_3);
 
-      dest += 32;
-      codes += 32;
-      i += 32;
-    }
-  }
-#endif
-
+            dest += 32;
+            codes += 32;
+            i += 32;
+          }
+        }
+        while (i < tuple_count) {
+          *dest++ = dict[*codes++];
+          i++;
+        }
+      });
+#else
   while (i < tuple_count) {
     *dest++ = dict[*codes++];
     i++;
   }
+#endif
 }
 
 template <>
@@ -181,37 +216,46 @@ inline void TDynamicDictionary<DOUBLE, DoubleScheme, DoubleStats, DoubleSchemeTy
 #ifdef BTR_USE_SIMD
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wuninitialized"
-  if (tuple_count >= 16) {
-    while (i < tuple_count - 15) {
-      // Load codes
-      __m128i codes_0 = _mm_loadu_si128(reinterpret_cast<__m128i*>(codes + 0));
-      __m128i codes_1 = _mm_loadu_si128(reinterpret_cast<__m128i*>(codes + 4));
-      __m128i codes_2 = _mm_loadu_si128(reinterpret_cast<__m128i*>(codes + 8));
-      __m128i codes_3 = _mm_loadu_si128(reinterpret_cast<__m128i*>(codes + 12));
+  BTR_IFELSEARM_SVE(
+      { decompress_dict(codes, dict, dest, tuple_count); },
+      {
+        if (tuple_count >= 16) {
+          while (i < tuple_count - 15) {
+            // Load codes
+            __m128i codes_0 = _mm_loadu_si128(reinterpret_cast<__m128i*>(codes + 0));
+            __m128i codes_1 = _mm_loadu_si128(reinterpret_cast<__m128i*>(codes + 4));
+            __m128i codes_2 = _mm_loadu_si128(reinterpret_cast<__m128i*>(codes + 8));
+            __m128i codes_3 = _mm_loadu_si128(reinterpret_cast<__m128i*>(codes + 12));
 
-      // gather values
-      __m256d values_0 = _mm256_i32gather_pd(dict, codes_0, 8);
-      __m256d values_1 = _mm256_i32gather_pd(dict, codes_1, 8);
-      __m256d values_2 = _mm256_i32gather_pd(dict, codes_2, 8);
-      __m256d values_3 = _mm256_i32gather_pd(dict, codes_3, 8);
+            // gather values
+            __m256d values_0 = _mm256_i32gather_pd(dict, codes_0, 8);
+            __m256d values_1 = _mm256_i32gather_pd(dict, codes_1, 8);
+            __m256d values_2 = _mm256_i32gather_pd(dict, codes_2, 8);
+            __m256d values_3 = _mm256_i32gather_pd(dict, codes_3, 8);
 
-      // store values
-      _mm256_storeu_pd(dest + 0, values_0);
-      _mm256_storeu_pd(dest + 4, values_1);
-      _mm256_storeu_pd(dest + 8, values_2);
-      _mm256_storeu_pd(dest + 12, values_3);
+            // store values
+            _mm256_storeu_pd(dest + 0, values_0);
+            _mm256_storeu_pd(dest + 4, values_1);
+            _mm256_storeu_pd(dest + 8, values_2);
+            _mm256_storeu_pd(dest + 12, values_3);
 
-      dest += 16;
-      codes += 16;
-      i += 16;
-    }
-  }
+            dest += 16;
+            codes += 16;
+            i += 16;
+          }
+        }
+
+        while (i < tuple_count) {
+          *dest++ = dict[*codes++];
+          i++;
+        }
+      });
 #pragma GCC diagnostic pop
-#endif
-
+#else
   while (i < tuple_count) {
     *dest++ = dict[*codes++];
     i++;
   }
+#endif
 }
 }  // namespace btrblocks
