@@ -33,9 +33,13 @@ void OneValue::decompress(INTEGER* dest,
                           u32 tuple_count,
                           u32 level) {
   const auto& col_struct = *reinterpret_cast<const OneValueStructure*>(src);
-  for (u32 row_i = 0; row_i < tuple_count; row_i++) {  // can be further optimized probably
-    dest[row_i] = col_struct.one_value;
-  }
+  BTR_IFELSEARM_SVE(
+      { std::fill(dest, dest + tuple_count, col_struct.one_value); },
+      {
+        for (u32 row_i = 0; row_i < tuple_count; row_i++) {
+          dest[row_i] = col_struct.one_value;
+        }
+      });
 }
 // -------------------------------------------------------------------------------------
 INTEGER OneValue::lookup(u32) {

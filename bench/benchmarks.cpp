@@ -1,15 +1,18 @@
 // ---------------------------------------------------------------------------
 // BtrBlocks
 // ---------------------------------------------------------------------------
-#include "benchmark/benchmark.h"
-#include "scheme/SchemePool.hpp"
 #include "bench-cases/regression_benchmark.cpp"
+#include "benchmark/benchmark.h"
+#include "common/SIMD.hpp"
+#include "scheme/SchemePool.hpp"
 // ---------------------------------------------------------------------------
 using namespace btrblocks;
 // ---------------------------------------------------------------------------
 int main(int argc, char** argv) {
 #ifdef BTR_USE_SIMD
-  std::cout << "\033[0;35mSIMD ENABLED\033[0m" << std::endl;
+  BTR_IFELSEARM_SVE(
+      { std::cout << "\033[0;35mSIMD+SVE ENABLED\033[0m" << std::endl; },
+      { std::cout << "\033[0;35mSIMD ENABLED\033[0m" << std::endl; });
 #else
   std::cout << "\033[0;31mSIMD DISABLED\033[0m" << std::endl;
 #endif
