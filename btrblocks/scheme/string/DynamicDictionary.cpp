@@ -420,7 +420,7 @@ void DynamicDictionary::decompress(u8* dest,
 
 #if defined(__aarch64__)
 template <typename number_type>
-inline size_t rle_decompress_len(const u32 *in_lengths, const number_type *in_values, const size_t N, number_type *data) {
+inline size_t dict_rle_decompress_len(const int *in_lengths, const number_type *in_values, const size_t N, number_type *data) {
     size_t total_len = 0;
     for (size_t i = 0; i < N; i++) {
         size_t len = in_lengths[i];
@@ -526,7 +526,7 @@ bool DynamicDictionary::decompressNoCopy(u8* dest,
     BTR_IFELSEARM_SVE(
         {
           auto dest_views_simd = reinterpret_cast<s32*>(dest_views);
-          rle_decompress_len(counts_ptr, values_ptr, runs_count, dest_views_simd);
+          dict_rle_decompress_len(counts_ptr, values_ptr, runs_count, dest_views_simd);
         },
         {
           for (u32 run = 0; run < runs_count; run++) {
@@ -563,7 +563,8 @@ bool DynamicDictionary::decompressNoCopy(u8* dest,
     u32 row_i = 0;
 #ifdef BTR_USE_SIMD
     BTR_IFELSEARM_SVE(
-        { decompress_dict(decompressed_codes, views_ptr, tuple_count, dest_views); },
+        {
+          decompress_dict(decompressed_codes, views_ptr, dest_views, tuple_count); },
         {
           static_assert(sizeof(*views_ptr) == 8);
           static_assert(SIMD_EXTRA_BYTES >= 4 * sizeof(__m256i));
