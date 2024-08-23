@@ -12,6 +12,19 @@ struct __attribute__((packed)) DynamicDictionaryStructure {
 };
 // -------------------------------------------------------------------------------------
 // Used for integer and doubles
+
+#if defined(__aarch64__)
+template <typename number_type, typename code_type>
+inline void decompress_dict(const code_type* codes,
+                            const number_type* dictionary,
+                            number_type* out_data,
+                            size_t N) {
+  for (size_t i = 0; i < N; i++) {
+    out_data[i] = dictionary[codes[i]];
+  }
+}
+#endif
+
 template <typename NumberType, typename SchemeType, typename StatsType, typename SchemeCodeType>
 class TDynamicDictionary {
  public:
@@ -91,9 +104,13 @@ class TDynamicDictionary {
                       level + 1);
     // -------------------------------------------------------------------------------------
     auto dict = reinterpret_cast<const NumberType*>(col_struct.data);
-    for (u32 i = 0; i < tuple_count; i++) {
-      dest[i] = dict[codes[i]];
-    }
+    BTR_IFELSEARM_SVE({
+      decompress_dict(codes, dict, dest, tuple_count);
+    }, {
+      for (u32 i = 0; i < tuple_count; i++) {
+        dest[i] = dict[codes[i]];
+      }
+    });
   }
   // -------------------------------------------------------------------------------------
   static inline string fullDescription(const u8* src, const string& selfDescription) {
@@ -104,15 +121,6 @@ class TDynamicDictionary {
            scheme.fullDescription(col_struct.data + col_struct.codes_offset);
   }
 };
-
-#if defined(__aarch64__)
-template <typename number_type, typename code_type>
-inline void decompress_dict(const code_type *codes, const number_type *dictionary, number_type *out_data, size_t N) {
-    for (size_t i = 0; i < N; i++) {
-        out_data[i] = dictionary[codes[i]];
-    }
-}
-#endif
 
 template <>
 inline void TDynamicDictionary<INTEGER, IntegerScheme, SInteger32Stats, IntegerSchemeType>::
