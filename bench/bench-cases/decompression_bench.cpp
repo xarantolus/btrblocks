@@ -20,7 +20,7 @@ static const std::vector<std::string> integer_datasets{
     "6_Dev_uni_proxima.integer", "9_Ruta_SAK.integer"};
 
 static const vector<vector<IntegerSchemeType> > benchmarkedIntegerSchemes{
-    {IntegerSchemeType::DICT, IntegerSchemeType::BP},
+    {IntegerSchemeType::DICT},
     {IntegerSchemeType::RLE}};
 
 static void SetupSchemesAndDepth(const vector<IntegerSchemeType>& schemes) {
