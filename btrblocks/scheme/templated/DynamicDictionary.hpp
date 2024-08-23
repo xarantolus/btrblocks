@@ -15,10 +15,10 @@ struct __attribute__((packed)) DynamicDictionaryStructure {
 
 #if defined(__aarch64__)
 template <typename number_type, typename code_type>
-inline void decompress_dict(const code_type* codes,
-                            const number_type* dictionary,
-                            number_type* out_data,
-                            size_t N) {
+__attribute__((target("+sve"))) inline void decompress_dict(const code_type* codes,
+                                                            const number_type* dictionary,
+                                                            number_type* out_data,
+                                                            size_t N) {
   for (size_t i = 0; i < N; i++) {
     out_data[i] = dictionary[codes[i]];
   }

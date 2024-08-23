@@ -133,7 +133,7 @@ class TRLE {
 
 #if defined(__aarch64__)
 template <typename number_type>
-size_t rle_decompress_len(const int *in_lengths, const number_type *in_values, const size_t N, number_type *data);
+__attribute__((target("+sve"))) size_t rle_decompress_len(const int *in_lengths, const number_type *in_values, const size_t N, number_type *data);
 #endif
 
 template <>
